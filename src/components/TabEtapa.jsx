@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
-  calcularFundoFT, calcularPoolEtapa, calcularPremios, calcularTotal,
-  pontosPorPosicao,
+  calcularAcerto, calcularFundoFT, calcularPoolEtapa, calcularPremios,
+  calcularTotal, pontosPorPosicao,
 } from '../lib/scoring'
 
 const fmt = (n) =>
@@ -13,83 +13,91 @@ export default function TabEtapa({ players, proximoNum, onSalvar, onAddPlayer })
   const [sede, setSede] = useState('')
   const [buyin, setBuyin] = useState(80)
   const [rebuy, setRebuy] = useState(70)
-  const [buyins, setBuyins] = useState(0)
-  const [rebuys, setRebuys] = useState(0)
-  // selecionados: { [name]: pos }  (pos 0 = participou sem pódio de pontos)
-  const [sel, setSel] = useState({})
+  // jogadores na mesa (ordem de entrada) + rebuys e posição por jogador
+  const [mesa, setMesa] = useState([])
+  const [rebuysByName, setRebuys] = useState({})
+  const [posByName, setPos] = useState({})
   const [novoJogador, setNovoJogador] = useState('')
 
-  const nB = Number(buyins) || 0
-  const nR = Number(rebuys) || 0
   const vB = Number(buyin) || 0
   const vR = Number(rebuy) || 0
+  const nB = mesa.length
+  const nR = useMemo(
+    () => mesa.reduce((s, n) => s + (rebuysByName[n] || 0), 0),
+    [mesa, rebuysByName],
+  )
 
   const total = calcularTotal(nB, nR, vB, vR)
   const fundoFT = calcularFundoFT(nB, nR)
   const poolEtapa = calcularPoolEtapa(nB, nR, vB, vR)
   const premios = calcularPremios(poolEtapa)
 
-  const participantes = useMemo(
-    () => Object.keys(sel).filter((n) => sel[n] !== undefined),
-    [sel],
-  )
-
-  // posições já usadas (para evitar duplicar 1º, 2º, etc.)
+  // posições já usadas (para não duplicar 1º, 2º…)
   const posUsadas = useMemo(() => {
     const m = {}
-    for (const n of participantes) {
-      const p = sel[n]
+    for (const n of mesa) {
+      const p = posByName[n]
       if (p >= 1) m[p] = n
     }
     return m
-  }, [sel, participantes])
+  }, [mesa, posByName])
 
-  function toggle(name) {
-    setSel((prev) => {
-      const next = { ...prev }
-      if (next[name] !== undefined) delete next[name]
-      else next[name] = 0
-      return next
+  // etapa "rascunho" para calcular o acerto ao vivo
+  const etapaDraft = useMemo(() => ({
+    buyin: vB, rebuy: vR, prizes: premios,
+    resultados: mesa.map((name) => ({
+      name,
+      pts: pontosPorPosicao(posByName[name] || 0),
+      rebuys: rebuysByName[name] || 0,
+    })),
+  }), [mesa, posByName, rebuysByName, vB, vR, premios])
+
+  const acerto = useMemo(() => calcularAcerto(etapaDraft), [etapaDraft])
+
+  function toggleMesa(name) {
+    setMesa((prev) =>
+      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name],
+    )
+  }
+  function incRebuy(name, delta) {
+    setRebuys((prev) => {
+      const v = Math.max(0, (prev[name] || 0) + delta)
+      return { ...prev, [name]: v }
     })
   }
-
-  function setPos(name, pos) {
-    setSel((prev) => ({ ...prev, [name]: pos }))
+  function setPosicao(name, pos) {
+    setPos((prev) => ({ ...prev, [name]: pos }))
   }
-
   function adicionarJogador() {
     if (onAddPlayer(novoJogador)) setNovoJogador('')
   }
 
   function salvar() {
-    if (participantes.length === 0) {
-      alert('Marque pelo menos um participante.')
+    if (mesa.length === 0) {
+      alert('Selecione pelo menos um jogador na mesa.')
       return
     }
-    const resultados = participantes.map((name) => ({
+    const resultados = mesa.map((name) => ({
       name,
-      pts: pontosPorPosicao(sel[name] || 0),
+      pts: pontosPorPosicao(posByName[name] || 0),
+      rebuys: rebuysByName[name] || 0,
     }))
     const etapa = {
       num: proximoNum,
       data,
       sede: sede.trim(),
-      buyin: vB,
-      rebuy: vR,
-      buyins: nB,
-      rebuys: nR,
-      total,
-      fundoFT,
-      poolEtapa,
+      buyin: vB, rebuy: vR,
+      buyins: nB, rebuys: nR,
+      total, fundoFT, poolEtapa,
       prizes: premios,
       resultados,
+      detalhado: true,
     }
     onSalvar(etapa)
-    // reset parcial
     setSede('')
-    setBuyins(0)
-    setRebuys(0)
-    setSel({})
+    setMesa([])
+    setRebuys({})
+    setPos({})
   }
 
   return (
@@ -116,66 +124,22 @@ export default function TabEtapa({ players, proximoNum, onSalvar, onAddPlayer })
           <input type="number" min="0" value={rebuy}
             onChange={(e) => setRebuy(e.target.value)} />
         </label>
-        <label>
-          Qtd. de buy-ins
-          <input type="number" min="0" value={buyins}
-            onChange={(e) => setBuyins(e.target.value)} />
-        </label>
-        <label>
-          Qtd. de rebuys
-          <input type="number" min="0" value={rebuys}
-            onChange={(e) => setRebuys(e.target.value)} />
-        </label>
       </div>
 
-      <div className="premio-box">
-        <div className="premio-total">
-          <span>Bolão da etapa <small>(total {fmt(total)})</small></span>
-          <strong>{fmt(poolEtapa)}</strong>
-        </div>
-        <div className="premio-linha">
-          <div><span className="medal gold">1º</span> {fmt(premios[0])}</div>
-          <div><span className="medal silver">2º</span> {fmt(premios[1])}</div>
-          <div><span className="medal bronze">3º</span> {fmt(premios[2])}</div>
-        </div>
-        <div className="ft-linha">🏁 Fundo da Mesa Final: <strong>{fmt(fundoFT)}</strong></div>
+      {/* 1) Quem está jogando */}
+      <h3>1. Quem está jogando?</h3>
+      <p className="hint">Toque nos jogadores para colocá-los na mesa.</p>
+      <div className="chips">
+        {players.map((name) => (
+          <button
+            key={name}
+            className={`chip ${mesa.includes(name) ? 'on' : ''}`}
+            onClick={() => toggleMesa(name)}
+          >
+            {name}
+          </button>
+        ))}
       </div>
-
-      <h3>Participantes &amp; posições</h3>
-      <p className="hint">
-        Marque quem jogou e escolha a posição final. Sem posição = participou
-        (1 ponto).
-      </p>
-
-      <div className="jogadores">
-        {players.map((name) => {
-          const ativo = sel[name] !== undefined
-          const pts = ativo ? pontosPorPosicao(sel[name]) : null
-          return (
-            <div key={name} className={`jogador ${ativo ? 'on' : ''}`}>
-              <label className="check">
-                <input type="checkbox" checked={ativo} onChange={() => toggle(name)} />
-                <span>{name}</span>
-              </label>
-              {ativo && (
-                <div className="pos-wrap">
-                  <select value={sel[name]} onChange={(e) => setPos(name, Number(e.target.value))}>
-                    <option value={0}>— participou</option>
-                    {[1, 2, 3, 4, 5, 6, 7].map((p) => (
-                      <option key={p} value={p}
-                        disabled={posUsadas[p] && posUsadas[p] !== name}>
-                        {p}º lugar
-                      </option>
-                    ))}
-                  </select>
-                  <span className="pts">{pts} pt{pts > 1 ? 's' : ''}</span>
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-
       <div className="add-player">
         <input
           placeholder="Adicionar novo jogador…"
@@ -186,9 +150,101 @@ export default function TabEtapa({ players, proximoNum, onSalvar, onAddPlayer })
         <button className="btn-ghost" onClick={adicionarJogador}>+ Jogador</button>
       </div>
 
-      <button className="btn-primary btn-block" onClick={salvar}>
-        Salvar etapa #{proximoNum}
-      </button>
+      {mesa.length > 0 && (
+        <>
+          {/* Resumo do bolão ao vivo */}
+          <div className="premio-box">
+            <div className="premio-total">
+              <span>Bolão da etapa <small>({nB} jogadores · {nR} rebuys · total {fmt(total)})</small></span>
+              <strong>{fmt(poolEtapa)}</strong>
+            </div>
+            <div className="premio-linha">
+              <div><span className="medal gold">1º</span> {fmt(premios[0])}</div>
+              <div><span className="medal silver">2º</span> {fmt(premios[1])}</div>
+              <div><span className="medal bronze">3º</span> {fmt(premios[2])}</div>
+            </div>
+            <div className="ft-linha">🏁 Fundo da Mesa Final: <strong>{fmt(fundoFT)}</strong></div>
+          </div>
+
+          {/* 2) Mesa: rebuys e posição */}
+          <h3>2. Mesa &amp; rebuys</h3>
+          <p className="hint">Clique no + a cada rebuy. No fim, escolha a posição.</p>
+          <div className="mesa">
+            {mesa.map((name) => {
+              const rb = rebuysByName[name] || 0
+              const pagou = vB + rb * vR
+              return (
+                <div key={name} className="mesa-row">
+                  <div className="mesa-top">
+                    <strong className="mesa-nome">{name}</strong>
+                    <select
+                      className="mesa-pos"
+                      value={posByName[name] || 0}
+                      onChange={(e) => setPosicao(name, Number(e.target.value))}
+                    >
+                      <option value={0}>— participou</option>
+                      {[1, 2, 3, 4, 5, 6, 7].map((p) => (
+                        <option key={p} value={p}
+                          disabled={posUsadas[p] && posUsadas[p] !== name}>
+                          {p}º lugar
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="mesa-bottom">
+                    <div className="rebuy-ctrl">
+                      <button onClick={() => incRebuy(name, -1)} disabled={rb === 0}>−</button>
+                      <span><strong>{rb}</strong> rebuy{rb === 1 ? '' : 's'}</span>
+                      <button onClick={() => incRebuy(name, 1)}>+</button>
+                    </div>
+                    <span className="mesa-pagou">pagou {fmt(pagou)}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* 3) Acerto de contas */}
+          <h3>3. Acerto de contas</h3>
+          <div className="tabela-wrap">
+            <table className="tabela">
+              <thead>
+                <tr>
+                  <th className="left">Jogador</th>
+                  <th>Pagou</th>
+                  <th>Recebeu</th>
+                  <th>Saldo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {acerto.map((a) => (
+                  <tr key={a.name}>
+                    <td className="left nome">{a.name}</td>
+                    <td>{fmt(a.pagou)}</td>
+                    <td>{a.recebeu ? fmt(a.recebeu) : '—'}</td>
+                    <td className={a.saldo >= 0 ? 'pos' : 'neg'}>{fmt(a.saldo)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td className="left">Total</td>
+                  <td>{fmt(total)}</td>
+                  <td>{fmt(poolEtapa)}</td>
+                  <td className="muted">🏁 {fmt(fundoFT)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <p className="hint">
+            A diferença ({fmt(fundoFT)}) é o que fica reservado para a Mesa Final.
+          </p>
+
+          <button className="btn-primary btn-block" onClick={salvar}>
+            Salvar etapa #{proximoNum}
+          </button>
+        </>
+      )}
     </div>
   )
 }

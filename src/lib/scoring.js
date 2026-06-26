@@ -56,6 +56,24 @@ export function indicePremio(pts) {
   return -1
 }
 
+// Acerto de contas de uma etapa: quanto cada jogador pagou e recebeu.
+// pagou = 1 buy-in + (rebuys do jogador × valor do rebuy)
+// recebeu = prêmio, se ficou no pódio (1º/2º/3º)
+export function calcularAcerto(etapa) {
+  return etapa.resultados
+    .map((r) => {
+      const rb = r.rebuys || 0
+      const pagou = etapa.buyin + rb * etapa.rebuy
+      const idx = indicePremio(r.pts)
+      const recebeu = idx >= 0 ? etapa.prizes[idx] || 0 : 0
+      return {
+        name: r.name, rebuys: rb, pts: r.pts,
+        pagou, recebeu, saldo: recebeu - pagou,
+      }
+    })
+    .sort((a, b) => b.saldo - a.saldo || b.recebeu - a.recebeu)
+}
+
 // Monta o ranking geral a partir das etapas.
 export function calcularRanking(etapas) {
   const mapa = new Map()
