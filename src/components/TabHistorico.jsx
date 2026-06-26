@@ -12,7 +12,7 @@ const fmtData = (iso) => {
 const medalha = (idx) =>
   idx === 0 ? 'gold' : idx === 1 ? 'silver' : idx === 2 ? 'bronze' : ''
 
-function EtapaItem({ e, onExcluir }) {
+function EtapaItem({ e, onExcluir, canEdit }) {
   const [verAcerto, setVerAcerto] = useState(false)
   const ehMF = e.num === 'MF'
   const ordenados = [...e.resultados].sort((a, b) => b.pts - a.pts)
@@ -29,15 +29,17 @@ function EtapaItem({ e, onExcluir }) {
           <span className="etapa-data">{fmtData(e.data)}</span>
         </div>
         <div className="etapa-total">{fmt(ehMF ? e.poolEtapa : e.total)}</div>
-        <button
-          className="btn-del"
-          title="Excluir"
-          onClick={() => {
-            if (confirm(`Excluir ${ehMF ? 'a Mesa Final' : `a etapa #${e.num}`}?`)) onExcluir(e.num)
-          }}
-        >
-          Excluir
-        </button>
+        {canEdit && (
+          <button
+            className="btn-del"
+            title="Excluir"
+            onClick={() => {
+              if (confirm(`Excluir ${ehMF ? 'a Mesa Final' : `a etapa #${e.num}`}?`)) onExcluir(e.num)
+            }}
+          >
+            Excluir
+          </button>
+        )}
       </div>
 
       <div className="etapa-meta">
@@ -110,7 +112,7 @@ function EtapaItem({ e, onExcluir }) {
   )
 }
 
-export default function TabHistorico({ etapas, onExcluir }) {
+export default function TabHistorico({ etapas, onExcluir, canEdit }) {
   if (!etapas.length) {
     return (
       <div className="card">
@@ -127,7 +129,7 @@ export default function TabHistorico({ etapas, onExcluir }) {
     <div className="card">
       <h2>Histórico de Etapas</h2>
       {ordenadas.map((e) => (
-        <EtapaItem key={e.num} e={e} onExcluir={onExcluir} />
+        <EtapaItem key={e.num} e={e} onExcluir={onExcluir} canEdit={canEdit} />
       ))}
     </div>
   )

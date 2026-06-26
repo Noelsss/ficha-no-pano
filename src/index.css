@@ -55,6 +55,33 @@ body {
 .suit { font-size: 32px; color: #f3f6f4; opacity: 0.9; }
 .suit.red { color: var(--red); }
 
+/* Barra de admin / login */
+.admin-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 14px;
+  margin-top: 12px;
+  font-size: 13px;
+}
+.admin-ok { color: var(--accent); font-weight: 700; }
+.admin-ro { color: var(--muted); }
+.admin-erro { color: var(--neg); }
+.admin-link {
+  background: transparent;
+  border: 0;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 13px;
+}
+.admin-login { display: flex; gap: 8px; align-items: center; }
+.admin-login input { padding: 7px 10px; font-size: 13px; }
+
 /* Abas */
 .tabs {
   display: flex;

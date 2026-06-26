@@ -1,75 +1,154 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SEED_ETAPAS, SEED_PLAYERS } from '../data/seed'
 import { calcularRanking } from '../lib/scoring'
+import { supabase, ADMIN_EMAIL } from '../lib/supabaseClient'
+import {
+  fetchTudo, removeEtapa, restaurar, semear, upsertEtapa, upsertPlayer,
+} from '../lib/db'
 
-// v3: lista de jogadores enxuta e em ordem alfabética.
-// Subir a versão garante que dados antigos no navegador sejam descartados.
-const STORAGE_KEY = 'ficha-no-pano-v3'
+// Cache local: deixa o app abrir instantâneo e funcionar offline para leitura.
+const CACHE_KEY = 'ficha-no-pano-cache'
 
-function carregar() {
+function lerCache() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(CACHE_KEY)
     if (raw) {
-      const dados = JSON.parse(raw)
-      if (Array.isArray(dados.etapas) && Array.isArray(dados.players)) {
-        return dados
-      }
+      const d = JSON.parse(raw)
+      if (Array.isArray(d.etapas) && Array.isArray(d.players)) return d
     }
-  } catch (e) {
-    console.warn('Falha ao ler localStorage, usando dados iniciais.', e)
-  }
+  } catch { /* ignora */ }
   return { etapas: SEED_ETAPAS, players: SEED_PLAYERS }
 }
 
 export function usePokerState() {
-  const [etapas, setEtapas] = useState(() => carregar().etapas)
-  const [players, setPlayers] = useState(() => carregar().players)
+  const cache = useRef(lerCache())
+  const [etapas, setEtapas] = useState(cache.current.etapas)
+  const [players, setPlayers] = useState(cache.current.players)
+  const [session, setSession] = useState(null)
+  const [carregando, setCarregando] = useState(true)
+  const [online, setOnline] = useState(true)
+  const semeou = useRef(false)
 
-  // persistência
-  useEffect(() => {
+  const isAdmin = !!session && session.user?.email === ADMIN_EMAIL
+
+  const carregar = useCallback(async () => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ etapas, players }))
+      const dados = await fetchTudo()
+      setEtapas(dados.etapas)
+      setPlayers(dados.players)
+      setOnline(true)
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(dados))
+      } catch { /* ignora */ }
+      return dados
     } catch (e) {
-      console.warn('Falha ao salvar no localStorage.', e)
+      console.warn('Falha ao carregar do Supabase; usando cache local.', e)
+      setOnline(false)
+      return null
+    } finally {
+      setCarregando(false)
     }
-  }, [etapas, players])
-
-  const proximoNum = useMemo(
-    () => (etapas.length ? Math.max(...etapas.map((e) => e.num)) + 1 : 1),
-    [etapas],
-  )
-
-  const addEtapa = useCallback((etapa) => {
-    setEtapas((prev) =>
-      [...prev, etapa].sort((a, b) => a.num - b.num),
-    )
   }, [])
 
-  const deleteEtapa = useCallback((num) => {
+  // carga inicial + sessão + tempo real
+  useEffect(() => {
+    carregar()
+
+    supabase.auth.getSession().then(({ data }) => setSession(data.session))
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
+
+    const canal = supabase
+      .channel('ficha-no-pano')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'etapas' }, carregar)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, carregar)
+      .subscribe()
+
+    return () => {
+      sub.subscription.unsubscribe()
+      supabase.removeChannel(canal)
+    }
+  }, [carregar])
+
+  // semeia o banco na primeira vez que o admin entra e encontra tudo vazio
+  useEffect(() => {
+    if (!isAdmin || semeou.current) return
+    if (etapas.length === 0 && players.length === 0 && online) {
+      semeou.current = true
+      semear(SEED_ETAPAS, SEED_PLAYERS)
+        .then(carregar)
+        .catch((e) => console.warn('Falha ao semear o banco.', e))
+    }
+  }, [isAdmin, etapas.length, players.length, online, carregar])
+
+  const proximoNum = useMemo(() => {
+    const nums = etapas.map((e) => e.num).filter((n) => typeof n === 'number')
+    return nums.length ? Math.max(...nums) + 1 : 1
+  }, [etapas])
+
+  const erroEscrita = (e) => {
+    console.error(e)
+    alert('Não foi possível salvar. Você precisa estar logado como admin.')
+  }
+
+  const addEtapa = useCallback(async (etapa) => {
+    setEtapas((prev) => [...prev.filter((e) => e.num !== etapa.num), etapa])
+    try {
+      await upsertEtapa(etapa)
+    } catch (e) {
+      erroEscrita(e)
+      carregar()
+    }
+  }, [carregar])
+
+  const deleteEtapa = useCallback(async (num) => {
     setEtapas((prev) => prev.filter((e) => e.num !== num))
-  }, [])
+    try {
+      await removeEtapa(num)
+    } catch (e) {
+      erroEscrita(e)
+      carregar()
+    }
+  }, [carregar])
 
-  const addPlayer = useCallback((nome) => {
-    const name = nome.trim()
+  const addPlayer = useCallback(async (nome) => {
+    const name = (nome || '').trim()
     if (!name) return false
-    let ok = false
-    setPlayers((prev) => {
-      if (prev.some((p) => p.toLowerCase() === name.toLowerCase())) return prev
-      ok = true
-      return [...prev, name].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+    if (players.some((p) => p.toLowerCase() === name.toLowerCase())) return false
+    setPlayers((prev) => [...prev, name].sort((a, b) => a.localeCompare(b, 'pt-BR')))
+    try {
+      await upsertPlayer(name)
+    } catch (e) {
+      erroEscrita(e)
+      carregar()
+    }
+    return true
+  }, [players, carregar])
+
+  const resetTudo = useCallback(async () => {
+    try {
+      await restaurar(SEED_ETAPAS, SEED_PLAYERS)
+      await carregar()
+    } catch (e) {
+      erroEscrita(e)
+    }
+  }, [carregar])
+
+  // autenticação
+  const entrar = useCallback(async (email) => {
+    const { error } = await supabase.auth.signInWithOtp({
+      email: (email || '').trim(),
+      options: { emailRedirectTo: window.location.origin + import.meta.env.BASE_URL },
     })
-    return ok
+    if (error) throw error
   }, [])
 
-  const resetTudo = useCallback(() => {
-    setEtapas(SEED_ETAPAS)
-    setPlayers(SEED_PLAYERS)
-  }, [])
+  const sair = useCallback(() => supabase.auth.signOut(), [])
 
   const ranking = useMemo(() => calcularRanking(etapas), [etapas])
 
   return {
     etapas, players, ranking, proximoNum,
     addEtapa, deleteEtapa, addPlayer, resetTudo,
+    session, isAdmin, carregando, online, entrar, sair,
   }
 }
