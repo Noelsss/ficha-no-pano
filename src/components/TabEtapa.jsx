@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react'
-import { calcularPremios, calcularTotal, pontosPorPosicao } from '../lib/scoring'
+import {
+  calcularFundoFT, calcularPoolEtapa, calcularPremios, calcularTotal,
+  pontosPorPosicao,
+} from '../lib/scoring'
 
 const fmt = (n) =>
   n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -7,6 +10,7 @@ const fmt = (n) =>
 export default function TabEtapa({ players, proximoNum, onSalvar, onAddPlayer }) {
   const hoje = new Date().toISOString().slice(0, 10)
   const [data, setData] = useState(hoje)
+  const [sede, setSede] = useState('')
   const [buyin, setBuyin] = useState(80)
   const [rebuy, setRebuy] = useState(70)
   const [buyins, setBuyins] = useState(0)
@@ -15,11 +19,15 @@ export default function TabEtapa({ players, proximoNum, onSalvar, onAddPlayer })
   const [sel, setSel] = useState({})
   const [novoJogador, setNovoJogador] = useState('')
 
-  const total = calcularTotal(
-    Number(buyins) || 0, Number(rebuys) || 0,
-    Number(buyin) || 0, Number(rebuy) || 0,
-  )
-  const premios = calcularPremios(total)
+  const nB = Number(buyins) || 0
+  const nR = Number(rebuys) || 0
+  const vB = Number(buyin) || 0
+  const vR = Number(rebuy) || 0
+
+  const total = calcularTotal(nB, nR, vB, vR)
+  const fundoFT = calcularFundoFT(nB, nR)
+  const poolEtapa = calcularPoolEtapa(nB, nR, vB, vR)
+  const premios = calcularPremios(poolEtapa)
 
   const participantes = useMemo(
     () => Object.keys(sel).filter((n) => sel[n] !== undefined),
@@ -58,20 +66,27 @@ export default function TabEtapa({ players, proximoNum, onSalvar, onAddPlayer })
       alert('Marque pelo menos um participante.')
       return
     }
-    const resultados = participantes.map((name) => ({ name, pos: sel[name] || 0 }))
+    const resultados = participantes.map((name) => ({
+      name,
+      pts: pontosPorPosicao(sel[name] || 0),
+    }))
     const etapa = {
       num: proximoNum,
       data,
-      buyin: Number(buyin) || 0,
-      rebuy: Number(rebuy) || 0,
-      buyins: Number(buyins) || 0,
-      rebuys: Number(rebuys) || 0,
+      sede: sede.trim(),
+      buyin: vB,
+      rebuy: vR,
+      buyins: nB,
+      rebuys: nR,
       total,
+      fundoFT,
+      poolEtapa,
       prizes: premios,
       resultados,
     }
     onSalvar(etapa)
     // reset parcial
+    setSede('')
     setBuyins(0)
     setRebuys(0)
     setSel({})
@@ -86,7 +101,11 @@ export default function TabEtapa({ players, proximoNum, onSalvar, onAddPlayer })
           Data
           <input type="date" value={data} onChange={(e) => setData(e.target.value)} />
         </label>
-        <div />
+        <label>
+          Sede / responsável
+          <input type="text" placeholder="Ex.: Glauber" value={sede}
+            onChange={(e) => setSede(e.target.value)} />
+        </label>
         <label>
           Valor do buy-in (R$)
           <input type="number" min="0" value={buyin}
@@ -111,14 +130,15 @@ export default function TabEtapa({ players, proximoNum, onSalvar, onAddPlayer })
 
       <div className="premio-box">
         <div className="premio-total">
-          <span>Total arrecadado</span>
-          <strong>{fmt(total)}</strong>
+          <span>Bolão da etapa <small>(total {fmt(total)})</small></span>
+          <strong>{fmt(poolEtapa)}</strong>
         </div>
         <div className="premio-linha">
           <div><span className="medal gold">1º</span> {fmt(premios[0])}</div>
           <div><span className="medal silver">2º</span> {fmt(premios[1])}</div>
           <div><span className="medal bronze">3º</span> {fmt(premios[2])}</div>
         </div>
+        <div className="ft-linha">🏁 Fundo da Mesa Final: <strong>{fmt(fundoFT)}</strong></div>
       </div>
 
       <h3>Participantes &amp; posições</h3>

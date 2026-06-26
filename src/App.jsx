@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { usePokerState } from './hooks/usePokerState'
+import { CALENDARIO } from './data/seed'
 import TabEtapa from './components/TabEtapa'
 import TabRanking from './components/TabRanking'
 import TabHistorico from './components/TabHistorico'
+import TabCalendario from './components/TabCalendario'
 
 const TABS = [
   { id: 'ranking', label: 'Ranking' },
+  { id: 'calendario', label: 'Calendário' },
   { id: 'etapa', label: 'Nova Etapa' },
   { id: 'historico', label: 'Histórico' },
 ]
@@ -45,6 +48,9 @@ export default function App() {
       <main>
         {tab === 'ranking' && (
           <TabRanking ranking={ranking} totalEtapas={etapas.length} />
+        )}
+        {tab === 'calendario' && (
+          <TabCalendario calendario={CALENDARIO} etapas={etapas} />
         )}
         {tab === 'etapa' && (
           <TabEtapa

@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { SEED_ETAPAS, SEED_PLAYERS } from '../data/seed'
 import { calcularRanking } from '../lib/scoring'
 
-const STORAGE_KEY = 'ficha-no-pano'
+// v2: estrutura corrigida (pontos por jogador, fundo da Mesa Final, ano 2026).
+// Subir a versão garante que dados antigos/errados no navegador sejam descartados.
+const STORAGE_KEY = 'ficha-no-pano-v2'
 
 function carregar() {
   try {

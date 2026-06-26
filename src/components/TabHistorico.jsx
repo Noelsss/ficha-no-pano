@@ -1,3 +1,5 @@
+import { indicePremio, posLabel } from '../lib/scoring'
+
 const fmt = (n) =>
   n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
@@ -6,8 +8,8 @@ const fmtData = (iso) => {
   return `${d}/${m}/${y}`
 }
 
-const medalha = (pos) =>
-  pos === 1 ? 'gold' : pos === 2 ? 'silver' : pos === 3 ? 'bronze' : ''
+const medalha = (idx) =>
+  idx === 0 ? 'gold' : idx === 1 ? 'silver' : idx === 2 ? 'bronze' : ''
 
 export default function TabHistorico({ etapas, onExcluir }) {
   if (!etapas.length) {
@@ -25,10 +27,9 @@ export default function TabHistorico({ etapas, onExcluir }) {
     <div className="card">
       <h2>Histórico de Etapas</h2>
       {ordenadas.map((e) => {
-        const posicionados = e.resultados
-          .filter((r) => r.pos >= 1)
-          .sort((a, b) => a.pos - b.pos)
-        const demais = e.resultados.filter((r) => r.pos === 0)
+        const ordenados = [...e.resultados].sort((a, b) => b.pts - a.pts)
+        const pontuaram = ordenados.filter((r) => r.pts >= 2)
+        const demais = ordenados.filter((r) => r.pts < 2)
         return (
           <div key={e.num} className="etapa-item">
             <div className="etapa-head">
@@ -49,19 +50,25 @@ export default function TabHistorico({ etapas, onExcluir }) {
             </div>
 
             <div className="etapa-meta">
+              {e.sede && <>🏠 {e.sede} · </>}
               {e.buyins} buy-ins ({fmt(e.buyin)}) · {e.rebuys} rebuys ({fmt(e.rebuy)})
+              {e.fundoFT != null && <> · 🏁 Mesa Final {fmt(e.fundoFT)}</>}
             </div>
 
             <ol className="resultados">
-              {posicionados.map((r) => (
-                <li key={r.name}>
-                  <span className={`medal ${medalha(r.pos)}`}>{r.pos}º</span>
-                  {r.name}
-                  {r.pos <= 3 && (
-                    <span className="premio-tag">{fmt(e.prizes[r.pos - 1])}</span>
-                  )}
-                </li>
-              ))}
+              {pontuaram.map((r) => {
+                const idx = indicePremio(r.pts)
+                return (
+                  <li key={r.name}>
+                    <span className={`medal ${medalha(idx)}`}>{posLabel(r.pts)}</span>
+                    {r.name}
+                    <span className="pts-tag">{r.pts} pts</span>
+                    {idx >= 0 && (
+                      <span className="premio-tag">{fmt(e.prizes[idx])}</span>
+                    )}
+                  </li>
+                )
+              })}
             </ol>
             {demais.length > 0 && (
               <div className="demais">
