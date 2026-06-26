@@ -5,12 +5,14 @@ import TabEtapa from './components/TabEtapa'
 import TabRanking from './components/TabRanking'
 import TabHistorico from './components/TabHistorico'
 import TabCalendario from './components/TabCalendario'
+import TabAcerto from './components/TabAcerto'
 import AdminBar from './components/AdminBar'
 
 export default function App() {
   const {
-    etapas, players, ranking, proximoNum,
+    etapas, players, ranking, proximoNum, pagamentos,
     addEtapa, deleteEtapa, addPlayer, resetTudo,
+    setPagamento, aplicarPagamentos,
     session, isAdmin, carregando, online, entrar, sair,
   } = usePokerState()
   const [tab, setTab] = useState('ranking')
@@ -18,13 +20,16 @@ export default function App() {
   const tabs = [
     { id: 'ranking', label: 'Ranking' },
     { id: 'calendario', label: 'Calendário' },
-    ...(isAdmin ? [{ id: 'etapa', label: 'Nova Etapa' }] : []),
+    ...(isAdmin ? [
+      { id: 'etapa', label: 'Nova Etapa' },
+      { id: 'acerto', label: 'Acerto' },
+    ] : []),
     { id: 'historico', label: 'Histórico' },
   ]
 
-  // se o admin sair enquanto está na aba de edição, volta para o ranking
+  // se o admin sair enquanto está numa aba de edição, volta para o ranking
   useEffect(() => {
-    if (tab === 'etapa' && !isAdmin) setTab('ranking')
+    if ((tab === 'etapa' || tab === 'acerto') && !isAdmin) setTab('ranking')
   }, [tab, isAdmin])
 
   return (
@@ -78,6 +83,15 @@ export default function App() {
               setTab('historico')
             }}
             onAddPlayer={addPlayer}
+          />
+        )}
+        {tab === 'acerto' && isAdmin && (
+          <TabAcerto
+            etapas={etapas}
+            players={players}
+            pagamentos={pagamentos}
+            setPagamento={setPagamento}
+            aplicarPagamentos={aplicarPagamentos}
           />
         )}
         {tab === 'historico' && (

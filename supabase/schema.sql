@@ -50,8 +50,30 @@ create policy "admin escreve etapas" on etapas
   with check ((auth.jwt() ->> 'email') = 'glbrpinto@gmail.com');
 
 -- ------------------------------------------------------------
+-- Pagamentos (status pago/pendente por jogador em cada etapa)
+-- ------------------------------------------------------------
+create table if not exists pagamentos (
+  etapa_num  text not null,
+  player     text not null,
+  pago       boolean not null default false,
+  valor      numeric,
+  data_pago  date,
+  fonte      text default 'manual',   -- 'manual' | 'extrato'
+  created_at timestamptz not null default now(),
+  primary key (etapa_num, player)
+);
+
+alter table pagamentos enable row level security;
+create policy "leitura publica pagamentos" on pagamentos for select using (true);
+create policy "admin escreve pagamentos" on pagamentos
+  for all to authenticated
+  using      ((auth.jwt() ->> 'email') = 'glbrpinto@gmail.com')
+  with check ((auth.jwt() ->> 'email') = 'glbrpinto@gmail.com');
+
+-- ------------------------------------------------------------
 -- Tempo real (opcional, mas recomendado): atualiza a tela de
 -- todo mundo quando você salva uma etapa.
 -- ------------------------------------------------------------
 alter publication supabase_realtime add table etapas;
 alter publication supabase_realtime add table players;
+alter publication supabase_realtime add table pagamentos;

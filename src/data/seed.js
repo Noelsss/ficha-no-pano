@@ -37,39 +37,44 @@ export const CALENDARIO = [
   { num: 'MF', label: 'Mesa Final', data: '2026-11-26', sede: 'Márcio' },
 ]
 
-// participantes: pares [nome, pontos]. pontos 1 = participou sem pódio de pontos.
+// participantes: [nome, pontos, rebuys?]. pontos 1 = participou; rebuys default 0.
+// Os rebuys por jogador (E1–E4) foram inferidos do extrato do PicPay e batem
+// com o total de rebuys de cada etapa.
 const etapa = (num, data, sede, buyins, rebuys, participantes) => {
   const total = calcularTotal(buyins, rebuys, BUYIN, REBUY)
   const fundoFT = calcularFundoFT(buyins, rebuys)
   const poolEtapa = calcularPoolEtapa(buyins, rebuys, BUYIN, REBUY)
   const prizes = calcularPremios(poolEtapa)
-  const resultados = participantes.map(([name, pts]) => ({ name, pts }))
+  const resultados = participantes.map(([name, pts, rb = 0]) => ({ name, pts, rebuys: rb }))
   return {
     num, data, sede, buyin: BUYIN, rebuy: REBUY,
     buyins, rebuys, total, fundoFT, poolEtapa, prizes, resultados,
+    detalhado: true,
   }
 }
 
+// 3º valor de cada par = rebuys do jogador (inferidos do extrato).
 export const SEED_ETAPAS = [
   etapa(1, '2026-02-26', 'Glauber', 8, 2, [
-    ['Cícero', 10], ['Jorginho', 8], ['Luiz', 6], ['Jean', 5],
-    ['Rafael', 4], ['Guarezi', 3], ['Bruno', 2], ['Márcio', 1],
+    ['Cícero', 10, 1], ['Jorginho', 8], ['Luiz', 6], ['Jean', 5],
+    ['Rafael', 4], ['Guarezi', 3], ['Bruno', 2, 1], ['Márcio', 1],
   ]),
   etapa(2, '2026-03-26', 'Davi', 10, 4, [
     ['Davi', 10], ['Glauber', 8], ['Bruno', 6], ['Fernando', 5],
-    ['Márcio', 4], ['Rui', 3], ['Rafael', 2],
-    ['Cícero', 1], ['Luiz', 1], ['Rogério', 1],
+    ['Márcio', 4, 1], ['Rui', 3], ['Rafael', 2, 2],
+    ['Cícero', 1], ['Luiz', 1, 1], ['Rogério', 1],
   ]),
   etapa(3, '2026-04-23', 'Rui', 11, 6, [
-    ['Davi', 10], ['Cícero', 8], ['Jean', 6], ['Rafael', 5],
-    ['Rui', 4], ['Bruno', 3], ['Maicon', 2],
-    ['Márcio', 1], ['Glauber', 1], ['Rogério', 1], ['Guarezi', 1],
+    ['Davi', 10], ['Cícero', 8], ['Jean', 6], ['Rafael', 5, 3],
+    ['Rui', 4], ['Bruno', 3, 1], ['Maicon', 2],
+    ['Márcio', 1, 1], ['Glauber', 1], ['Rogério', 1], ['Guarezi', 1, 1],
   ]),
   etapa(4, '2026-05-28', 'Cícero', 11, 5, [
-    ['Luiz', 10], ['Márcio', 8], ['Cícero', 6], ['Jean', 5],
-    ['Davi', 4], ['Rui', 3], ['Jorginho', 2],
-    ['Bruno', 1], ['Glauber', 1], ['Rogério', 1], ['Fernando', 1],
+    ['Luiz', 10], ['Márcio', 8], ['Cícero', 6], ['Jean', 5, 1],
+    ['Davi', 4], ['Rui', 3], ['Jorginho', 2, 1],
+    ['Bruno', 1], ['Glauber', 1, 1], ['Rogério', 1, 1], ['Fernando', 1, 1],
   ]),
+  // E5 ainda não acertada no extrato: 2 rebuys ainda não atribuídos por jogador.
   etapa(5, '2026-06-25', 'Luiz', 9, 2, [
     ['Glauber', 10], ['Bruno', 8], ['Jorginho', 6], ['Luiz', 5],
     ['Márcio', 4], ['Cícero', 3], ['Rui', 2],

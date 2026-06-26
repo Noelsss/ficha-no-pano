@@ -3,7 +3,8 @@ import { SEED_ETAPAS, SEED_PLAYERS } from '../data/seed'
 import { calcularRanking } from '../lib/scoring'
 import { supabase, ADMIN_EMAIL } from '../lib/supabaseClient'
 import {
-  fetchTudo, removeEtapa, restaurar, semear, upsertEtapa, upsertPlayer,
+  fetchPagamentos, fetchTudo, removeEtapa, restaurar, semear,
+  upsertEtapa, upsertPagamento, upsertPagamentos, upsertPlayer,
 } from '../lib/db'
 
 // Cache local: deixa o app abrir instantâneo e funcionar offline para leitura.
@@ -24,6 +25,7 @@ export function usePokerState() {
   const cache = useRef(lerCache())
   const [etapas, setEtapas] = useState(cache.current.etapas)
   const [players, setPlayers] = useState(cache.current.players)
+  const [pagamentos, setPagamentos] = useState([])
   const [session, setSession] = useState(null)
   const [carregando, setCarregando] = useState(true)
   const [online, setOnline] = useState(true)
@@ -33,9 +35,10 @@ export function usePokerState() {
 
   const carregar = useCallback(async () => {
     try {
-      const dados = await fetchTudo()
+      const [dados, pags] = await Promise.all([fetchTudo(), fetchPagamentos()])
       setEtapas(dados.etapas)
       setPlayers(dados.players)
+      setPagamentos(pags)
       setOnline(true)
       try {
         localStorage.setItem(CACHE_KEY, JSON.stringify(dados))
@@ -61,6 +64,7 @@ export function usePokerState() {
       .channel('ficha-no-pano')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'etapas' }, carregar)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, carregar)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pagamentos' }, carregar)
       .subscribe()
 
     return () => {
@@ -124,6 +128,30 @@ export function usePokerState() {
     return true
   }, [players, carregar])
 
+  const setPagamento = useCallback(async (p) => {
+    setPagamentos((prev) => {
+      const resto = prev.filter(
+        (x) => !(x.etapaNum === p.etapaNum && x.player === p.player),
+      )
+      return [...resto, p]
+    })
+    try {
+      await upsertPagamento(p)
+    } catch (e) {
+      erroEscrita(e)
+      carregar()
+    }
+  }, [carregar])
+
+  const aplicarPagamentos = useCallback(async (lista) => {
+    try {
+      await upsertPagamentos(lista)
+      await carregar()
+    } catch (e) {
+      erroEscrita(e)
+    }
+  }, [carregar])
+
   const resetTudo = useCallback(async () => {
     try {
       await restaurar(SEED_ETAPAS, SEED_PLAYERS)
@@ -147,8 +175,9 @@ export function usePokerState() {
   const ranking = useMemo(() => calcularRanking(etapas), [etapas])
 
   return {
-    etapas, players, ranking, proximoNum,
+    etapas, players, ranking, proximoNum, pagamentos,
     addEtapa, deleteEtapa, addPlayer, resetTudo,
+    setPagamento, aplicarPagamentos,
     session, isAdmin, carregando, online, entrar, sair,
   }
 }

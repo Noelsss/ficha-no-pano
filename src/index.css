@@ -545,6 +545,58 @@ button { font-family: inherit; cursor: pointer; }
 .cal-sede strong { font-size: 14px; }
 .cal-status { font-size: 18px; min-width: 24px; text-align: center; }
 
+/* Acerto de contas */
+.acerto-acoes { margin-bottom: 16px; }
+.furos-banner {
+  background: rgba(231, 76, 60, 0.10);
+  border: 1px solid #5a2320;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+.furos-titulo { font-size: 15px; margin-bottom: 8px; }
+.furos-titulo strong { color: var(--neg); }
+.furo-linha {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  border-top: 1px dashed var(--line);
+  font-size: 14px;
+}
+.furo-linha span:first-child { font-weight: 600; flex: 1; }
+.furo-et { color: var(--muted); font-size: 12px; }
+
+.acerto-etapa { margin-top: 18px; }
+.acerto-etapa h3 { display: flex; align-items: center; gap: 10px; }
+.pago-toggle {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.pago-toggle.on { border-color: var(--accent); color: var(--accent); background: #143626; }
+
+.previa {
+  background: var(--card-2);
+  border: 1px solid var(--gold);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.previa h3 { margin: 0 0 4px; }
+.previa-bloco {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.previa-bloco strong { display: block; color: var(--text); margin-bottom: 4px; }
+.previa-bloco.furos strong { color: var(--neg); }
+.previa-botoes { display: flex; gap: 10px; margin-top: 14px; }
+
 /* Rodapé */
 .rodape { text-align: center; margin-top: 24px; }
 .btn-reset {

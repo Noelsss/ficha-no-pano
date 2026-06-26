@@ -83,6 +83,51 @@ export async function upsertPlayer(name) {
   if (error) throw error
 }
 
+// --- pagamentos ---
+
+function rowToPagamento(r) {
+  return {
+    etapaNum: numFromDb(r.etapa_num),
+    player: r.player,
+    pago: r.pago,
+    valor: r.valor,
+    dataPago: r.data_pago,
+    fonte: r.fonte,
+  }
+}
+
+function pagamentoToRow(p) {
+  return {
+    etapa_num: String(p.etapaNum),
+    player: p.player,
+    pago: !!p.pago,
+    valor: p.valor ?? null,
+    data_pago: p.dataPago ?? null,
+    fonte: p.fonte || 'manual',
+  }
+}
+
+export async function fetchPagamentos() {
+  const { data, error } = await supabase.from('pagamentos').select('*')
+  if (error) {
+    // tabela pode ainda não existir; trata como vazio
+    console.warn('Sem tabela pagamentos (ou erro ao ler):', error.message)
+    return []
+  }
+  return (data || []).map(rowToPagamento)
+}
+
+export async function upsertPagamento(p) {
+  const { error } = await supabase.from('pagamentos').upsert(pagamentoToRow(p))
+  if (error) throw error
+}
+
+export async function upsertPagamentos(lista) {
+  if (!lista.length) return
+  const { error } = await supabase.from('pagamentos').upsert(lista.map(pagamentoToRow))
+  if (error) throw error
+}
+
 // Popula o banco com os dados iniciais (apenas se estiver vazio).
 export async function semear(seedEtapas, seedPlayers) {
   const linhasEtapas = seedEtapas.map(etapaToRow)
