@@ -280,6 +280,7 @@ button { font-family: inherit; cursor: pointer; }
 .tabela tr.top-1 .rank { color: var(--gold); }
 .tabela .pos { color: var(--pos); font-weight: 600; }
 .tabela .neg { color: var(--neg); font-weight: 600; }
+.tabela .vazio { color: var(--line); font-weight: 700; }
 
 /* Histórico */
 .etapa-item {

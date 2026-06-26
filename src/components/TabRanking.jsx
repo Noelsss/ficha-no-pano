@@ -31,9 +31,9 @@ export default function TabRanking({ ranking, totalEtapas }) {
                 <td className="left nome">{j.name}</td>
                 <td><strong>{j.pontos}</strong></td>
                 <td>{j.etapas}</td>
-                <td>{j.vitorias || '—'}</td>
-                <td>{j.segundos || '—'}</td>
-                <td>{j.terceiros || '—'}</td>
+                <td>{j.vitorias || <span className="vazio">·</span>}</td>
+                <td>{j.segundos || <span className="vazio">·</span>}</td>
+                <td>{j.terceiros || <span className="vazio">·</span>}</td>
               </tr>
             ))}
           </tbody>
