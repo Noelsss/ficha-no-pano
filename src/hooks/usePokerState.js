@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { SEED_ETAPAS, SEED_PLAYERS } from '../data/seed'
 import { calcularRanking } from '../lib/scoring'
 
-// v2: estrutura corrigida (pontos por jogador, fundo da Mesa Final, ano 2026).
-// Subir a versão garante que dados antigos/errados no navegador sejam descartados.
-const STORAGE_KEY = 'ficha-no-pano-v2'
+// v3: lista de jogadores enxuta e em ordem alfabética.
+// Subir a versão garante que dados antigos no navegador sejam descartados.
+const STORAGE_KEY = 'ficha-no-pano-v3'
 
 function carregar() {
   try {
@@ -56,7 +56,7 @@ export function usePokerState() {
     setPlayers((prev) => {
       if (prev.some((p) => p.toLowerCase() === name.toLowerCase())) return prev
       ok = true
-      return [...prev, name]
+      return [...prev, name].sort((a, b) => a.localeCompare(b, 'pt-BR'))
     })
     return ok
   }, [])

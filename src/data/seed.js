@@ -18,10 +18,9 @@ export const BUYIN = 80
 export const REBUY = 70
 
 export const SEED_PLAYERS = [
-  'Gibran', 'Rui', 'Guarezi', 'Maicon', 'Rafael', 'Bruno', 'Ricardo',
-  'Glauber', 'Rogério', 'Fonseca', 'Davi', 'Luiz', 'Prudente', 'Leonardo',
-  'Luis Felipe', 'Cícero', 'Márcio', 'Jean', 'Mi', 'Fernando', 'Jorginho',
-  'Marco Lopez', 'Luiz Henrique',
+  'Bruno', 'Cícero', 'Davi', 'Fernando', 'Fonseca', 'Glauber', 'Guarezi',
+  'Jean', 'Jorginho', 'Leonardo', 'Luiz', 'Maicon', 'Márcio', 'Prudente',
+  'Rafael', 'Rogério', 'Rui',
 ]
 
 // Calendário completo da temporada (datas, sede/responsável e Mesa Final).

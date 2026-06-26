@@ -56,6 +56,8 @@ export default function App() {
           <TabEtapa
             players={players}
             proximoNum={proximoNum}
+            calendario={CALENDARIO}
+            etapas={etapas}
             onSalvar={(e) => {
               addEtapa(e)
               setTab('historico')

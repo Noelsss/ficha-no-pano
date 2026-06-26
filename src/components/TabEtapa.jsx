@@ -7,10 +7,33 @@ import {
 const fmt = (n) =>
   n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
-export default function TabEtapa({ players, proximoNum, onSalvar, onAddPlayer }) {
+const fmtDataBR = (iso) => {
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
+}
+
+export default function TabEtapa({
+  players, proximoNum, calendario = [], etapas = [], onSalvar, onAddPlayer,
+}) {
   const hoje = new Date().toISOString().slice(0, 10)
-  const [data, setData] = useState(hoje)
-  const [sede, setSede] = useState('')
+
+  // etapas agendadas que ainda não foram realizadas (exclui a Mesa Final)
+  const playedNums = useMemo(
+    () => new Set(etapas.map((e) => e.num)),
+    [etapas],
+  )
+  const agendadas = useMemo(
+    () => calendario.filter(
+      (c) => typeof c.num === 'number' && !playedNums.has(c.num),
+    ),
+    [calendario, playedNums],
+  )
+  const temAgenda = agendadas.length > 0
+  const padrao = agendadas[0]
+
+  const [num, setNum] = useState(() => padrao?.num ?? proximoNum)
+  const [data, setData] = useState(() => padrao?.data ?? hoje)
+  const [sede, setSede] = useState(() => padrao?.sede ?? '')
   const [buyin, setBuyin] = useState(80)
   const [rebuy, setRebuy] = useState(70)
   // jogadores na mesa (ordem de entrada) + rebuys e posição por jogador
@@ -68,6 +91,14 @@ export default function TabEtapa({ players, proximoNum, onSalvar, onAddPlayer })
   function setPosicao(name, pos) {
     setPos((prev) => ({ ...prev, [name]: pos }))
   }
+  function escolherEtapa(n) {
+    setNum(n)
+    const e = agendadas.find((c) => c.num === n)
+    if (e) {
+      setData(e.data)
+      setSede(e.sede)
+    }
+  }
   function adicionarJogador() {
     if (onAddPlayer(novoJogador)) setNovoJogador('')
   }
@@ -83,7 +114,7 @@ export default function TabEtapa({ players, proximoNum, onSalvar, onAddPlayer })
       rebuys: rebuysByName[name] || 0,
     }))
     const etapa = {
-      num: proximoNum,
+      num,
       data,
       sede: sede.trim(),
       buyin: vB, rebuy: vR,
@@ -102,13 +133,26 @@ export default function TabEtapa({ players, proximoNum, onSalvar, onAddPlayer })
 
   return (
     <div className="card">
-      <h2>Nova Etapa <span className="badge">#{proximoNum}</span></h2>
+      <h2>Nova Etapa <span className="badge">#{num}</span></h2>
 
       <div className="grid grid-2">
-        <label>
-          Data
-          <input type="date" value={data} onChange={(e) => setData(e.target.value)} />
-        </label>
+        {temAgenda ? (
+          <label>
+            Etapa
+            <select value={num} onChange={(e) => escolherEtapa(Number(e.target.value))}>
+              {agendadas.map((c) => (
+                <option key={c.num} value={c.num}>
+                  Etapa {c.num} · {fmtDataBR(c.data)}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <label>
+            Data
+            <input type="date" value={data} onChange={(e) => setData(e.target.value)} />
+          </label>
+        )}
         <label>
           Sede / responsável
           <input type="text" placeholder="Ex.: Glauber" value={sede}
@@ -241,7 +285,7 @@ export default function TabEtapa({ players, proximoNum, onSalvar, onAddPlayer })
           </p>
 
           <button className="btn-primary btn-block" onClick={salvar}>
-            Salvar etapa #{proximoNum}
+            Salvar etapa #{num}
           </button>
         </>
       )}
