@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { calcularAcerto, indicePremio, posLabel } from '../lib/scoring'
-import { BANCA } from '../lib/reconcile'
 
 const fmt = (n) =>
   n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -14,6 +13,7 @@ const medalha = (idx) =>
   idx === 0 ? 'gold' : idx === 1 ? 'silver' : idx === 2 ? 'bronze' : ''
 
 const MEDALHAS = ['🥇', '🥈', '🥉']
+const PIX = 'glbrpinto@gmail.com'
 
 // Monta o texto do acerto para colar no WhatsApp.
 function montarTextoWhatsapp(e) {
@@ -38,12 +38,12 @@ function montarTextoWhatsapp(e) {
 
   const acerto = calcularAcerto(e).sort((a, b) => a.saldo - b.saldo)
   L.push('')
-  L.push(`💸 *Acerto* (Pix p/ ${BANCA})`)
+  L.push('💸 *Acerto*')
+  L.push(`🔑 Pix: ${PIX}`)
   for (const a of acerto) {
-    const banca = a.name === BANCA ? ' (banca)' : ''
-    if (a.saldo < 0) L.push(`• ${a.name}${banca}: paga ${fmt(-a.saldo)}`)
-    else if (a.saldo > 0) L.push(`• ${a.name}${banca}: recebe ${fmt(a.saldo)}`)
-    else L.push(`• ${a.name}${banca}: quitado`)
+    if (a.saldo < 0) L.push(`• ${a.name}: paga ${fmt(-a.saldo)}`)
+    else if (a.saldo > 0) L.push(`• ${a.name}: recebe ${fmt(a.saldo)}`)
+    else L.push(`• ${a.name}: quitado`)
   }
 
   if (!ehMF && e.fundoFT) {
