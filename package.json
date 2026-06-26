@@ -3,7 +3,7 @@
   "private": true,
   "version": "30.0.0",
   "type": "module",
-  "homepage": "https://glbrpinto.github.io/ficha-no-pano/",
+  "homepage": "https://noelsss.github.io/ficha-no-pano/",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
