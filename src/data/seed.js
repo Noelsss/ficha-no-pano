@@ -74,9 +74,8 @@ export const SEED_ETAPAS = [
     ['Davi', 4], ['Rui', 3], ['Jorginho', 2, 1],
     ['Bruno', 1], ['Glauber', 1, 1], ['Rogério', 1, 1], ['Fernando', 1, 1],
   ]),
-  // E5 ainda não acertada no extrato: 2 rebuys ainda não atribuídos por jogador.
   etapa(5, '2026-06-25', 'Luiz', 9, 2, [
-    ['Glauber', 10], ['Bruno', 8], ['Jorginho', 6], ['Luiz', 5],
+    ['Glauber', 10], ['Bruno', 8], ['Jorginho', 6], ['Luiz', 5, 2],
     ['Márcio', 4], ['Cícero', 3], ['Rui', 2],
     ['Maicon', 1], ['Rafael', 1],
   ]),
