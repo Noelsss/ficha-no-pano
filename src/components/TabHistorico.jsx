@@ -81,13 +81,15 @@ function EtapaItem({ e, onExcluir, canEdit }) {
           <span className="etapa-data">{fmtData(e.data)}</span>
         </div>
         <div className="etapa-total">{fmt(ehMF ? e.poolEtapa : e.total)}</div>
-        <button
-          className={`btn-copy ${copiado ? 'on' : ''}`}
-          title="Copiar acerto para o WhatsApp"
-          onClick={copiarWhatsapp}
-        >
-          {copiado ? '✓ Copiado!' : '📋 WhatsApp'}
-        </button>
+        {canEdit && (
+          <button
+            className={`btn-copy ${copiado ? 'on' : ''}`}
+            title="Copiar acerto para o WhatsApp"
+            onClick={copiarWhatsapp}
+          >
+            {copiado ? '✓ Copiado!' : '📋 WhatsApp'}
+          </button>
+        )}
         {canEdit && (
           <button
             className="btn-del"
