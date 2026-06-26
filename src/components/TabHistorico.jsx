@@ -14,24 +14,26 @@ const medalha = (idx) =>
 
 function EtapaItem({ e, onExcluir }) {
   const [verAcerto, setVerAcerto] = useState(false)
+  const ehMF = e.num === 'MF'
   const ordenados = [...e.resultados].sort((a, b) => b.pts - a.pts)
   const pontuaram = ordenados.filter((r) => r.pts >= 2)
   const demais = ordenados.filter((r) => r.pts < 2)
   const acerto = e.detalhado ? calcularAcerto(e) : null
+  const titulo = ehMF ? '🏆 Mesa Final' : `Etapa #${e.num}`
 
   return (
-    <div className="etapa-item">
+    <div className={`etapa-item ${ehMF ? 'mf' : ''}`}>
       <div className="etapa-head">
         <div>
-          <strong>Etapa #{e.num}</strong>
+          <strong>{titulo}</strong>
           <span className="etapa-data">{fmtData(e.data)}</span>
         </div>
-        <div className="etapa-total">{fmt(e.total)}</div>
+        <div className="etapa-total">{fmt(ehMF ? e.poolEtapa : e.total)}</div>
         <button
           className="btn-del"
-          title="Excluir etapa"
+          title="Excluir"
           onClick={() => {
-            if (confirm(`Excluir a etapa #${e.num}?`)) onExcluir(e.num)
+            if (confirm(`Excluir ${ehMF ? 'a Mesa Final' : `a etapa #${e.num}`}?`)) onExcluir(e.num)
           }}
         >
           Excluir
@@ -40,8 +42,14 @@ function EtapaItem({ e, onExcluir }) {
 
       <div className="etapa-meta">
         {e.sede && <>🏠 {e.sede} · </>}
-        {e.buyins} buy-ins ({fmt(e.buyin)}) · {e.rebuys} rebuys ({fmt(e.rebuy)})
-        {e.fundoFT != null && <> · 🏁 Mesa Final {fmt(e.fundoFT)}</>}
+        {ehMF ? (
+          <>💰 {fmt(e.acumulado || 0)} acumulados distribuídos</>
+        ) : (
+          <>
+            {e.buyins} buy-ins ({fmt(e.buyin)}) · {e.rebuys} rebuys ({fmt(e.rebuy)})
+            {e.fundoFT != null && <> · 🏁 Mesa Final {fmt(e.fundoFT)}</>}
+          </>
+        )}
       </div>
 
       <ol className="resultados">
@@ -112,7 +120,8 @@ export default function TabHistorico({ etapas, onExcluir }) {
     )
   }
 
-  const ordenadas = [...etapas].sort((a, b) => b.num - a.num)
+  const sortKey = (n) => (n === 'MF' ? Infinity : n)
+  const ordenadas = [...etapas].sort((a, b) => sortKey(b.num) - sortKey(a.num))
 
   return (
     <div className="card">

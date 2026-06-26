@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
-  calcularAcerto, calcularFundoFT, calcularPoolEtapa, calcularPremios,
-  calcularTotal, pontosPorPosicao,
+  calcularAcerto, calcularFundoFT, calcularPremios, calcularTotal,
+  pontosPorPosicao,
 } from '../lib/scoring'
 
 const fmt = (n) =>
@@ -17,31 +17,40 @@ export default function TabEtapa({
 }) {
   const hoje = new Date().toISOString().slice(0, 10)
 
-  // etapas agendadas que ainda não foram realizadas (exclui a Mesa Final)
+  // etapas/eventos agendados que ainda não foram realizados (inclui a Mesa Final)
   const playedNums = useMemo(
     () => new Set(etapas.map((e) => e.num)),
     [etapas],
   )
   const agendadas = useMemo(
-    () => calendario.filter(
-      (c) => typeof c.num === 'number' && !playedNums.has(c.num),
-    ),
+    () => calendario.filter((c) => !playedNums.has(c.num)),
     [calendario, playedNums],
   )
   const temAgenda = agendadas.length > 0
   const padrao = agendadas[0]
 
+  // fundo acumulado sugerido p/ Mesa Final = soma dos fundos das etapas jogadas
+  const acumuladoPadrao = useMemo(
+    () => etapas
+      .filter((e) => e.num !== 'MF')
+      .reduce((s, e) => s + (e.fundoFT || 0), 0),
+    [etapas],
+  )
+
+  const ehMFPadrao = padrao?.num === 'MF'
   const [num, setNum] = useState(() => padrao?.num ?? proximoNum)
   const [data, setData] = useState(() => padrao?.data ?? hoje)
   const [sede, setSede] = useState(() => padrao?.sede ?? '')
-  const [buyin, setBuyin] = useState(80)
-  const [rebuy, setRebuy] = useState(70)
+  const [buyin, setBuyin] = useState(() => (ehMFPadrao ? 0 : 80))
+  const [rebuy, setRebuy] = useState(() => (ehMFPadrao ? 0 : 70))
+  const [acumulado, setAcumulado] = useState(() => (ehMFPadrao ? acumuladoPadrao : 0))
   // jogadores na mesa (ordem de entrada) + rebuys e posição por jogador
   const [mesa, setMesa] = useState([])
   const [rebuysByName, setRebuys] = useState({})
   const [posByName, setPos] = useState({})
   const [novoJogador, setNovoJogador] = useState('')
 
+  const ehMF = num === 'MF'
   const vB = Number(buyin) || 0
   const vR = Number(rebuy) || 0
   const nB = mesa.length
@@ -51,8 +60,9 @@ export default function TabEtapa({
   )
 
   const total = calcularTotal(nB, nR, vB, vR)
-  const fundoFT = calcularFundoFT(nB, nR)
-  const poolEtapa = calcularPoolEtapa(nB, nR, vB, vR)
+  const fundoFT = ehMF ? 0 : calcularFundoFT(nB, nR)
+  const acum = ehMF ? Number(acumulado) || 0 : 0
+  const poolEtapa = total - fundoFT + acum
   const premios = calcularPremios(poolEtapa)
 
   // posições já usadas (para não duplicar 1º, 2º…)
@@ -92,11 +102,19 @@ export default function TabEtapa({
     setPos((prev) => ({ ...prev, [name]: pos }))
   }
   function escolherEtapa(n) {
-    setNum(n)
-    const e = agendadas.find((c) => c.num === n)
-    if (e) {
-      setData(e.data)
-      setSede(e.sede)
+    const e = agendadas.find((c) => String(c.num) === String(n))
+    if (!e) return
+    setNum(e.num)
+    setData(e.data)
+    setSede(e.sede)
+    if (e.num === 'MF') {
+      setBuyin(0)
+      setRebuy(0)
+      setAcumulado(acumuladoPadrao)
+    } else {
+      setBuyin(80)
+      setRebuy(70)
+      setAcumulado(0)
     }
   }
   function adicionarJogador() {
@@ -119,7 +137,7 @@ export default function TabEtapa({
       sede: sede.trim(),
       buyin: vB, rebuy: vR,
       buyins: nB, rebuys: nR,
-      total, fundoFT, poolEtapa,
+      total, fundoFT, poolEtapa, acumulado: acum,
       prizes: premios,
       resultados,
       detalhado: true,
@@ -133,16 +151,20 @@ export default function TabEtapa({
 
   return (
     <div className="card">
-      <h2>Nova Etapa <span className="badge">#{num}</span></h2>
+      <h2>
+        {ehMF
+          ? <>Mesa Final <span className="badge">🏆 Grande Final</span></>
+          : <>Nova Etapa <span className="badge">#{num}</span></>}
+      </h2>
 
       <div className="grid grid-2">
         {temAgenda ? (
           <label>
             Etapa
-            <select value={num} onChange={(e) => escolherEtapa(Number(e.target.value))}>
+            <select value={String(num)} onChange={(e) => escolherEtapa(e.target.value)}>
               {agendadas.map((c) => (
                 <option key={c.num} value={c.num}>
-                  Etapa {c.num} · {fmtDataBR(c.data)}
+                  {c.num === 'MF' ? '🏆 Mesa Final' : `Etapa ${c.num}`} · {fmtDataBR(c.data)}
                 </option>
               ))}
             </select>
@@ -170,8 +192,17 @@ export default function TabEtapa({
         </label>
       </div>
 
+      {ehMF && (
+        <label className="acumulado-field">
+          💰 Dinheiro acumulado (entra na divisão)
+          <input type="number" min="0" value={acumulado}
+            onChange={(e) => setAcumulado(e.target.value)} />
+          <small>Sugestão: {fmt(acumuladoPadrao)} — soma dos fundos das etapas jogadas.</small>
+        </label>
+      )}
+
       {/* 1) Quem está jogando */}
-      <h3>1. Quem está jogando?</h3>
+      <h3>1. {ehMF ? 'Quem está na mesa final?' : 'Quem está jogando?'}</h3>
       <p className="hint">Toque nos jogadores para colocá-los na mesa.</p>
       <div className="chips">
         {players.map((name) => (
@@ -199,7 +230,10 @@ export default function TabEtapa({
           {/* Resumo do bolão ao vivo */}
           <div className="premio-box">
             <div className="premio-total">
-              <span>Bolão da etapa <small>({nB} jogadores · {nR} rebuys · total {fmt(total)})</small></span>
+              <span>
+                {ehMF ? 'Premiação da Mesa Final' : 'Bolão da etapa'}{' '}
+                <small>({nB} jogadores · {nR} rebuys · mesa {fmt(total)})</small>
+              </span>
               <strong>{fmt(poolEtapa)}</strong>
             </div>
             <div className="premio-linha">
@@ -207,7 +241,11 @@ export default function TabEtapa({
               <div><span className="medal silver">2º</span> {fmt(premios[1])}</div>
               <div><span className="medal bronze">3º</span> {fmt(premios[2])}</div>
             </div>
-            <div className="ft-linha">🏁 Fundo da Mesa Final: <strong>{fmt(fundoFT)}</strong></div>
+            <div className="ft-linha">
+              {ehMF
+                ? <>💰 Inclui acumulado de <strong>{fmt(acum)}</strong> na divisão</>
+                : <>🏁 Fundo da Mesa Final: <strong>{fmt(fundoFT)}</strong></>}
+            </div>
           </div>
 
           {/* 2) Mesa: rebuys e posição */}
@@ -275,17 +313,21 @@ export default function TabEtapa({
                   <td className="left">Total</td>
                   <td>{fmt(total)}</td>
                   <td>{fmt(poolEtapa)}</td>
-                  <td className="muted">🏁 {fmt(fundoFT)}</td>
+                  <td className="muted">
+                    {ehMF ? <>💰 {fmt(acum)}</> : <>🏁 {fmt(fundoFT)}</>}
+                  </td>
                 </tr>
               </tfoot>
             </table>
           </div>
           <p className="hint">
-            A diferença ({fmt(fundoFT)}) é o que fica reservado para a Mesa Final.
+            {ehMF
+              ? `Inclui ${fmt(acum)} de dinheiro acumulado somado à divisão.`
+              : `A diferença (${fmt(fundoFT)}) fica reservada para a Mesa Final.`}
           </p>
 
           <button className="btn-primary btn-block" onClick={salvar}>
-            Salvar etapa #{num}
+            {ehMF ? 'Salvar Mesa Final 🏆' : `Salvar etapa #${num}`}
           </button>
         </>
       )}

@@ -89,6 +89,7 @@ export function calcularRanking(etapas) {
   }
 
   for (const etapa of etapas) {
+    if (etapa.num === 'MF') continue // a Mesa Final não pontua no ranking da temporada
     for (const r of etapa.resultados) {
       const j = garantir(r.name)
       j.pontos += r.pts

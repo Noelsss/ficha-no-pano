@@ -231,6 +231,18 @@ input:focus, select:focus {
 .add-player { display: flex; gap: 8px; margin: 18px 0 8px; }
 .add-player input { flex: 1; }
 
+/* Campo de dinheiro acumulado (Mesa Final) */
+.acumulado-field {
+  margin-top: 14px;
+  background: rgba(232, 195, 73, 0.08);
+  border: 1px solid var(--gold);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--gold);
+}
+.acumulado-field input { margin-top: 6px; }
+.acumulado-field small { color: var(--muted); font-weight: 400; margin-top: 6px; }
+
 /* Chips de seleção de jogadores */
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .chip {
