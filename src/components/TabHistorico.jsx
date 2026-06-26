@@ -136,7 +136,7 @@ function EtapaItem({ e, onExcluir, canEdit }) {
         </div>
       )}
 
-      {acerto && (
+      {acerto && canEdit && (
         <>
           <button className="link-acerto" onClick={() => setVerAcerto((v) => !v)}>
             {verAcerto ? '▾ ocultar acerto de contas' : '▸ ver acerto de contas'}
