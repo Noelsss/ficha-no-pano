@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { calcularAcerto, indicePremio, posLabel } from '../lib/scoring'
+import { BANCA } from '../lib/reconcile'
 
 const fmt = (n) =>
   n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -12,9 +13,60 @@ const fmtData = (iso) => {
 const medalha = (idx) =>
   idx === 0 ? 'gold' : idx === 1 ? 'silver' : idx === 2 ? 'bronze' : ''
 
+const MEDALHAS = ['🥇', '🥈', '🥉']
+
+// Monta o texto do acerto para colar no WhatsApp.
+function montarTextoWhatsapp(e) {
+  const ehMF = e.num === 'MF'
+  const L = []
+  L.push(ehMF
+    ? `🏆 *Mesa Final* · ${fmtData(e.data)}`
+    : `🃏 *Ficha no Pano* — Etapa ${e.num} · ${fmtData(e.data)}`)
+  if (e.sede) L.push(`🏠 Sede: ${e.sede}`)
+
+  const podio = e.resultados
+    .filter((r) => indicePremio(r.pts) >= 0)
+    .sort((a, b) => b.pts - a.pts)
+  if (podio.length) {
+    L.push('')
+    L.push('🏆 *Premiação*')
+    for (const r of podio) {
+      const idx = indicePremio(r.pts)
+      L.push(`${MEDALHAS[idx]} ${r.name} — ${fmt(e.prizes[idx])}`)
+    }
+  }
+
+  const acerto = calcularAcerto(e).sort((a, b) => a.saldo - b.saldo)
+  L.push('')
+  L.push(`💸 *Acerto* (Pix p/ ${BANCA})`)
+  for (const a of acerto) {
+    const banca = a.name === BANCA ? ' (banca)' : ''
+    if (a.saldo < 0) L.push(`• ${a.name}${banca}: paga ${fmt(-a.saldo)}`)
+    else if (a.saldo > 0) L.push(`• ${a.name}${banca}: recebe ${fmt(a.saldo)}`)
+    else L.push(`• ${a.name}${banca}: quitado`)
+  }
+
+  if (!ehMF && e.fundoFT) {
+    L.push('')
+    L.push(`🏁 Fundo da Mesa Final desta etapa: ${fmt(e.fundoFT)}`)
+  }
+  return L.join('\n')
+}
+
 function EtapaItem({ e, onExcluir, canEdit }) {
   const [verAcerto, setVerAcerto] = useState(false)
+  const [copiado, setCopiado] = useState(false)
   const ehMF = e.num === 'MF'
+
+  async function copiarWhatsapp() {
+    try {
+      await navigator.clipboard.writeText(montarTextoWhatsapp(e))
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2000)
+    } catch {
+      alert('Não consegui copiar automaticamente. Tente de novo.')
+    }
+  }
   const ordenados = [...e.resultados].sort((a, b) => b.pts - a.pts)
   const pontuaram = ordenados.filter((r) => r.pts >= 2)
   const demais = ordenados.filter((r) => r.pts < 2)
@@ -29,6 +81,13 @@ function EtapaItem({ e, onExcluir, canEdit }) {
           <span className="etapa-data">{fmtData(e.data)}</span>
         </div>
         <div className="etapa-total">{fmt(ehMF ? e.poolEtapa : e.total)}</div>
+        <button
+          className={`btn-copy ${copiado ? 'on' : ''}`}
+          title="Copiar acerto para o WhatsApp"
+          onClick={copiarWhatsapp}
+        >
+          {copiado ? '✓ Copiado!' : '📋 WhatsApp'}
+        </button>
         {canEdit && (
           <button
             className="btn-del"

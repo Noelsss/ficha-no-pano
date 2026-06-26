@@ -384,6 +384,18 @@ button { font-family: inherit; cursor: pointer; }
   font-weight: 600;
 }
 .btn-del:hover { background: #3a1715; }
+.btn-copy {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.btn-copy:hover { background: #143626; }
+.btn-copy.on { background: var(--accent); color: #06281a; }
 
 /* Tabela ranking */
 .tabela-wrap { overflow-x: auto; }
@@ -425,8 +437,9 @@ button { font-family: inherit; cursor: pointer; }
 .etapa-head {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   justify-content: space-between;
+  flex-wrap: wrap;
 }
 .etapa-head strong { font-size: 17px; }
 .etapa-data {
