@@ -31,6 +31,7 @@ export function calcularRanking(etapas) {
     if (!mapa.has(name)) {
       mapa.set(name, {
         name, pontos: 0, etapas: 0, vitorias: 0,
+        segundos: 0, terceiros: 0,
         premios: 0, custo: 0, saldo: 0,
       })
     }
@@ -45,6 +46,8 @@ export function calcularRanking(etapas) {
       j.etapas += 1
       j.custo += etapa.buyin
       if (r.pos === 1) j.vitorias += 1
+      if (r.pos === 2) j.segundos += 1
+      if (r.pos === 3) j.terceiros += 1
       if (r.pos >= 1 && r.pos <= 3) j.premios += premios[r.pos - 1] ?? 0
     }
   }

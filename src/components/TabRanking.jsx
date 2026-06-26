@@ -1,6 +1,3 @@
-const fmt = (n) =>
-  n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-
 export default function TabRanking({ ranking, totalEtapas }) {
   if (!ranking.length) {
     return (
@@ -22,8 +19,9 @@ export default function TabRanking({ ranking, totalEtapas }) {
               <th className="left">Jogador</th>
               <th>Pts</th>
               <th>Et.</th>
-              <th>🏆</th>
-              <th>Saldo</th>
+              <th title="1º lugar">🥇</th>
+              <th title="2º lugar">🥈</th>
+              <th title="3º lugar">🥉</th>
             </tr>
           </thead>
           <tbody>
@@ -34,15 +32,15 @@ export default function TabRanking({ ranking, totalEtapas }) {
                 <td><strong>{j.pontos}</strong></td>
                 <td>{j.etapas}</td>
                 <td>{j.vitorias || '—'}</td>
-                <td className={j.saldo >= 0 ? 'pos' : 'neg'}>{fmt(j.saldo)}</td>
+                <td>{j.segundos || '—'}</td>
+                <td>{j.terceiros || '—'}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
       <p className="hint">
-        Saldo aproximado: prêmios recebidos − (buy-in × etapas disputadas).
-        Rebuys não são atribuídos por jogador.
+        🥇 1º · 🥈 2º · 🥉 3º lugares conquistados na temporada.
       </p>
     </div>
   )
