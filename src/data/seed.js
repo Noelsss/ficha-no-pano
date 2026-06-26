@@ -31,7 +31,7 @@ export const CALENDARIO = [
   { num: 3, data: '2026-04-23', sede: 'Rui' },
   { num: 4, data: '2026-05-28', sede: 'Cícero' },
   { num: 5, data: '2026-06-25', sede: 'Luiz' },
-  { num: 6, data: '2026-07-30', sede: 'Jorge' },
+  { num: 6, data: '2026-07-30', sede: 'Jorginho' },
   { num: 7, data: '2026-08-27', sede: 'Maicon' },
   { num: 8, data: '2026-09-24', sede: 'Bruno' },
   { num: 9, data: '2026-10-29', sede: 'Rafael' },
