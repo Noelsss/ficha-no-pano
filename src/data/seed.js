@@ -63,8 +63,8 @@ export const SEED_ETAPAS = [
   ]),
   etapa(3, '2026-04-23', 'Rui', 11, 6, [
     ['Davi', 10], ['Cícero', 8], ['Jean', 6], ['Rafael', 5],
-    ['Rui', 4], ['Bruno', 3], ['Maicon', 2], ['Márcio', 2],
-    ['Glauber', 1], ['Rogério', 1], ['Guarezi', 1],
+    ['Rui', 4], ['Bruno', 3], ['Maicon', 2],
+    ['Márcio', 1], ['Glauber', 1], ['Rogério', 1], ['Guarezi', 1],
   ]),
   etapa(4, '2026-05-28', 'Cícero', 11, 5, [
     ['Luiz', 10], ['Márcio', 8], ['Cícero', 6], ['Jean', 5],
