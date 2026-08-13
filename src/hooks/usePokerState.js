@@ -1,64 +1,98 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { SEED_ETAPAS, SEED_PLAYERS } from '../data/seed'
 import { calcularRanking } from '../lib/scoring'
-import { supabase, ADMIN_EMAIL } from '../lib/supabaseClient'
+import { supabase } from '../lib/supabaseClient'
 import {
-  fetchPagamentos, fetchTudo, removeEtapa, restaurar, semear,
+  aprovarAcesso, fetchAutorizados, fetchMe, fetchPagamentos, fetchSolicitacoes,
+  fetchTudo, pedirAcesso, recusarAcesso, removeEtapa, revogarAcesso,
   upsertEtapa, upsertPagamento, upsertPagamentos, upsertPlayer,
 } from '../lib/db'
 
-// Cache local: deixa o app abrir instantâneo e funcionar offline para leitura.
-const CACHE_KEY = 'ficha-no-pano-cache'
-
-function lerCache() {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY)
-    if (raw) {
-      const d = JSON.parse(raw)
-      if (Array.isArray(d.etapas) && Array.isArray(d.players)) return d
-    }
-  } catch { /* ignora */ }
-  return { etapas: SEED_ETAPAS, players: SEED_PLAYERS }
-}
+// Nada de cache em localStorage: etapas e pagamentos são dados privados e não
+// devem sobrar no aparelho depois que a pessoa sai. O app sempre lê do banco.
 
 export function usePokerState() {
-  const cache = useRef(lerCache())
-  const [etapas, setEtapas] = useState(cache.current.etapas)
-  const [players, setPlayers] = useState(cache.current.players)
+  const [etapas, setEtapas] = useState([])
+  const [players, setPlayers] = useState([])
   const [pagamentos, setPagamentos] = useState([])
+  const [solicitacoes, setSolicitacoes] = useState([])
+  const [autorizados, setAutorizados] = useState([])
   const [session, setSession] = useState(null)
+  const [me, setMe] = useState(null)          // registro em `autorizados`
+  const [minhaSolicitacao, setMinhaSolicitacao] = useState(null)
   const [carregando, setCarregando] = useState(true)
-  const [online, setOnline] = useState(true)
-  const semeou = useRef(false)
+  const [erroRede, setErroRede] = useState(false)
+  const sessaoLida = useRef(false)
 
-  const isAdmin = !!session && session.user?.email === ADMIN_EMAIL
+  const autorizado = !!me
+  const isAdmin = !!me?.admin
+
+  const limpar = useCallback(() => {
+    setEtapas([])
+    setPlayers([])
+    setPagamentos([])
+    setSolicitacoes([])
+    setAutorizados([])
+    setMe(null)
+    setMinhaSolicitacao(null)
+  }, [])
 
   const carregar = useCallback(async () => {
+    // Sem sessão não há o que buscar: o RLS devolveria vazio de qualquer forma.
+    const { data: s } = await supabase.auth.getSession()
+    if (!s.session) {
+      limpar()
+      setCarregando(false)
+      return
+    }
     try {
+      const eu = await fetchMe()
+      setMe(eu)
+      if (!eu) {
+        // Logado, mas fora da lista de autorizados: não carrega nada além do
+        // próprio pedido de acesso (o RLS só devolve esse).
+        setEtapas([])
+        setPlayers([])
+        setPagamentos([])
+        const pedidos = await fetchSolicitacoes()
+        setMinhaSolicitacao(pedidos[0] || null)
+        setErroRede(false)
+        return
+      }
       const [dados, pags] = await Promise.all([fetchTudo(), fetchPagamentos()])
       setEtapas(dados.etapas)
       setPlayers(dados.players)
       setPagamentos(pags)
-      setOnline(true)
-      try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify(dados))
-      } catch { /* ignora */ }
-      return dados
+      if (eu.admin) {
+        const [pedidos, lista] = await Promise.all([fetchSolicitacoes(), fetchAutorizados()])
+        setSolicitacoes(pedidos)
+        setAutorizados(lista)
+      }
+      setErroRede(false)
     } catch (e) {
-      console.warn('Falha ao carregar do Supabase; usando cache local.', e)
-      setOnline(false)
-      return null
+      console.warn('Falha ao carregar do Supabase.', e)
+      setErroRede(true)
     } finally {
       setCarregando(false)
     }
-  }, [])
+  }, [limpar])
 
-  // carga inicial + sessão + tempo real
+  // sessão + carga inicial + tempo real
   useEffect(() => {
-    carregar()
+    supabase.auth.getSession().then(({ data }) => {
+      sessaoLida.current = true
+      setSession(data.session)
+      carregar()
+    })
 
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
+    const { data: sub } = supabase.auth.onAuthStateChange((evento, s) => {
+      setSession(s)
+      if (evento === 'SIGNED_OUT' || !s) {
+        limpar()
+        setCarregando(false)
+      } else if (sessaoLida.current) {
+        carregar()
+      }
+    })
 
     const canal = supabase
       .channel('ficha-no-pano')
@@ -71,18 +105,7 @@ export function usePokerState() {
       sub.subscription.unsubscribe()
       supabase.removeChannel(canal)
     }
-  }, [carregar])
-
-  // semeia o banco na primeira vez que o admin entra e encontra tudo vazio
-  useEffect(() => {
-    if (!isAdmin || semeou.current) return
-    if (etapas.length === 0 && players.length === 0 && online) {
-      semeou.current = true
-      semear(SEED_ETAPAS, SEED_PLAYERS)
-        .then(carregar)
-        .catch((e) => console.warn('Falha ao semear o banco.', e))
-    }
-  }, [isAdmin, etapas.length, players.length, online, carregar])
+  }, [carregar, limpar])
 
   const proximoNum = useMemo(() => {
     const nums = etapas.map((e) => e.num).filter((n) => typeof n === 'number')
@@ -152,32 +175,63 @@ export function usePokerState() {
     }
   }, [carregar])
 
-  const resetTudo = useCallback(async () => {
+  // --- acessos (admin) ---
+
+  const aprovar = useCallback(async (email, nome) => {
     try {
-      await restaurar(SEED_ETAPAS, SEED_PLAYERS)
+      await aprovarAcesso(email, nome)
       await carregar()
-    } catch (e) {
-      erroEscrita(e)
-    }
+    } catch (e) { erroEscrita(e) }
   }, [carregar])
 
-  // autenticação
+  const recusar = useCallback(async (email) => {
+    try {
+      await recusarAcesso(email)
+      await carregar()
+    } catch (e) { erroEscrita(e) }
+  }, [carregar])
+
+  const revogar = useCallback(async (email) => {
+    try {
+      await revogarAcesso(email)
+      await carregar()
+    } catch (e) { erroEscrita(e) }
+  }, [carregar])
+
+  // Pedido de acesso de quem entrou mas ainda não foi liberado.
+  const solicitar = useCallback(async (nome) => {
+    const email = session?.user?.email
+    if (!email) return
+    await pedirAcesso(email, nome)
+    const pedidos = await fetchSolicitacoes()
+    setMinhaSolicitacao(pedidos[0] || null)
+  }, [session])
+
+  // autenticação — o cadastro é aberto de propósito: qualquer um cria conta,
+  // mas não enxerga nada enquanto o admin não colocar em `autorizados`.
   const entrar = useCallback(async (email) => {
     const { error } = await supabase.auth.signInWithOtp({
       email: (email || '').trim(),
-      options: { emailRedirectTo: window.location.origin + import.meta.env.BASE_URL },
+      options: {
+        emailRedirectTo: window.location.origin + import.meta.env.BASE_URL,
+      },
     })
     if (error) throw error
   }, [])
 
-  const sair = useCallback(() => supabase.auth.signOut(), [])
+  const sair = useCallback(async () => {
+    await supabase.auth.signOut()
+    limpar()
+  }, [limpar])
 
   const ranking = useMemo(() => calcularRanking(etapas), [etapas])
 
   return {
     etapas, players, ranking, proximoNum, pagamentos,
-    addEtapa, deleteEtapa, addPlayer, resetTudo,
+    addEtapa, deleteEtapa, addPlayer,
     setPagamento, aplicarPagamentos,
-    session, isAdmin, carregando, online, entrar, sair,
+    solicitacoes, autorizados, minhaSolicitacao,
+    aprovar, recusar, revogar, solicitar,
+    session, me, autorizado, isAdmin, carregando, erroRede, entrar, sair,
   }
 }

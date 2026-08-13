@@ -13,10 +13,9 @@ const medalha = (idx) =>
   idx === 0 ? 'gold' : idx === 1 ? 'silver' : idx === 2 ? 'bronze' : ''
 
 const MEDALHAS = ['🥇', '🥈', '🥉']
-const PIX = 'glbrpinto@gmail.com'
 
 // Monta o texto do acerto para colar no WhatsApp.
-function montarTextoWhatsapp(e) {
+function montarTextoWhatsapp(e, pix) {
   const ehMF = e.num === 'MF'
   const L = []
   L.push(ehMF
@@ -39,7 +38,7 @@ function montarTextoWhatsapp(e) {
   const acerto = calcularAcerto(e).sort((a, b) => a.saldo - b.saldo)
   L.push('')
   L.push('💸 *Acerto*')
-  L.push(`🔑 Pix: ${PIX}`)
+  if (pix) L.push(`🔑 Pix: ${pix}`)
   for (const a of acerto) {
     if (a.saldo < 0) L.push(`• ${a.name}: paga ${fmt(-a.saldo)}`)
     else if (a.saldo > 0) L.push(`• ${a.name}: recebe ${fmt(a.saldo)}`)
@@ -53,14 +52,14 @@ function montarTextoWhatsapp(e) {
   return L.join('\n')
 }
 
-function EtapaItem({ e, onExcluir, canEdit }) {
+function EtapaItem({ e, onExcluir, canEdit, pix }) {
   const [verAcerto, setVerAcerto] = useState(false)
   const [copiado, setCopiado] = useState(false)
   const ehMF = e.num === 'MF'
 
   async function copiarWhatsapp() {
     try {
-      await navigator.clipboard.writeText(montarTextoWhatsapp(e))
+      await navigator.clipboard.writeText(montarTextoWhatsapp(e, pix))
       setCopiado(true)
       setTimeout(() => setCopiado(false), 2000)
     } catch {
@@ -173,7 +172,7 @@ function EtapaItem({ e, onExcluir, canEdit }) {
   )
 }
 
-export default function TabHistorico({ etapas, onExcluir, canEdit }) {
+export default function TabHistorico({ etapas, onExcluir, canEdit, pix }) {
   if (!etapas.length) {
     return (
       <div className="card">
@@ -190,7 +189,7 @@ export default function TabHistorico({ etapas, onExcluir, canEdit }) {
     <div className="card">
       <h2>Histórico de Etapas</h2>
       {ordenadas.map((e) => (
-        <EtapaItem key={e.num} e={e} onExcluir={onExcluir} canEdit={canEdit} />
+        <EtapaItem key={e.num} e={e} onExcluir={onExcluir} canEdit={canEdit} pix={pix} />
       ))}
     </div>
   )

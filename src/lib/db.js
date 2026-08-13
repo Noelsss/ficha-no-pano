@@ -128,21 +128,82 @@ export async function upsertPagamentos(lista) {
   if (error) throw error
 }
 
-// Popula o banco com os dados iniciais (apenas se estiver vazio).
-export async function semear(seedEtapas, seedPlayers) {
-  const linhasEtapas = seedEtapas.map(etapaToRow)
-  const linhasPlayers = seedPlayers.map((name) => ({ name }))
-  const [e1, e2] = await Promise.all([
-    supabase.from('etapas').upsert(linhasEtapas),
-    supabase.from('players').upsert(linhasPlayers),
-  ])
-  if (e1.error) throw e1.error
-  if (e2.error) throw e2.error
+// --- solicitações de acesso ---
+
+// O admin recebe todas; quem não é admin recebe só a própria. Quem decide
+// é o RLS, não este código.
+export async function fetchSolicitacoes() {
+  const { data, error } = await supabase
+    .from('solicitacoes')
+    .select('email, nome, status, created_at')
+    .order('created_at', { ascending: true })
+  if (error) {
+    console.warn('Erro ao ler solicitações:', error.message)
+    return []
+  }
+  return data || []
 }
 
-// Restaura os dados originais: apaga tudo e regrava o seed.
-export async function restaurar(seedEtapas, seedPlayers) {
-  await supabase.from('etapas').delete().neq('num', '___')
-  await supabase.from('players').delete().neq('name', '___')
-  await semear(seedEtapas, seedPlayers)
+// Registra (ou atualiza o nome de) o pedido da pessoa logada.
+export async function pedirAcesso(email, nome) {
+  const { error } = await supabase
+    .from('solicitacoes')
+    .upsert({ email, nome: nome || null, status: 'pendente' }, { onConflict: 'email' })
+  if (error) throw error
+}
+
+// Aprovar = colocar em `autorizados`. É isso, e só isso, que dá acesso.
+export async function aprovarAcesso(email, nome) {
+  const { error } = await supabase
+    .from('autorizados')
+    .upsert({ email, nome: nome || null, admin: false }, { onConflict: 'email' })
+  if (error) throw error
+  const { error: e2 } = await supabase
+    .from('solicitacoes')
+    .update({ status: 'aprovado' })
+    .eq('email', email)
+  if (e2) throw e2
+}
+
+export async function recusarAcesso(email) {
+  const { error } = await supabase
+    .from('solicitacoes')
+    .update({ status: 'recusado' })
+    .eq('email', email)
+  if (error) throw error
+}
+
+// Revogar = tirar de `autorizados`. A conta de login continua existindo,
+// mas deixa de enxergar qualquer dado.
+export async function revogarAcesso(email) {
+  const { error } = await supabase.from('autorizados').delete().eq('email', email)
+  if (error) throw error
+}
+
+export async function fetchAutorizados() {
+  const { data, error } = await supabase
+    .from('autorizados')
+    .select('email, nome, admin')
+    .order('nome')
+  if (error) {
+    console.warn('Erro ao ler autorizados:', error.message)
+    return []
+  }
+  return data || []
+}
+
+// --- autorização ---
+
+// Retorna o registro do usuário logado em `autorizados`, ou null se ele não
+// estiver liberado. É o RLS que decide: quem não está na lista recebe [].
+export async function fetchMe() {
+  const { data, error } = await supabase
+    .from('autorizados')
+    .select('email, nome, admin, pix')
+    .limit(1)
+  if (error) {
+    console.warn('Erro ao checar autorização:', error.message)
+    return null
+  }
+  return data?.[0] || null
 }

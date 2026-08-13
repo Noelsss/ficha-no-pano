@@ -2,6 +2,13 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# Segredos — o repositório é público, nada disto pode ser commitado
+.env
+.env.*
+!.env.example
+*.pem
+*.key
 .DS_Store
 .vite
 npm-debug.log*

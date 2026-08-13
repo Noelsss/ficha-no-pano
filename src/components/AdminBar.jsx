@@ -1,55 +1,13 @@
-import { useState } from 'react'
-
-export default function AdminBar({ isAdmin, session, online, entrar, sair }) {
-  const [aberto, setAberto] = useState(false)
-  const [email, setEmail] = useState('')
-  const [status, setStatus] = useState('') // '', 'enviando', 'enviado', 'erro'
-
-  async function enviar() {
-    if (!email.trim()) return
-    setStatus('enviando')
-    try {
-      await entrar(email)
-      setStatus('enviado')
-    } catch (e) {
-      console.error(e)
-      setStatus('erro')
-    }
-  }
-
-  if (isAdmin) {
-    return (
-      <div className="admin-bar">
-        <span className="admin-ok">✓ Admin · {session?.user?.email}</span>
-        <button className="admin-link" onClick={sair}>Sair</button>
-      </div>
-    )
-  }
-
+// Barra de sessão: quem está logado e o botão de sair.
+// O formulário de entrada virou a tela `Login`, que agora é um portão.
+export default function AdminBar({ isAdmin, me, session, erroRede, sair }) {
   return (
     <div className="admin-bar">
-      <span className="admin-ro">
-        {online ? '👁️ Modo visualização' : '⚠️ Offline (dados em cache)'}
+      <span className={isAdmin ? 'admin-ok' : 'admin-ro'}>
+        {isAdmin ? '✓ Admin' : '👤'} · {me?.nome || session?.user?.email}
       </span>
-      {!aberto ? (
-        <button className="admin-link" onClick={() => setAberto(true)}>Entrar (admin)</button>
-      ) : status === 'enviado' ? (
-        <span className="admin-ok">📧 Link enviado! Confira seu e-mail.</span>
-      ) : (
-        <div className="admin-login">
-          <input
-            type="email"
-            placeholder="seu e-mail"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && enviar()}
-          />
-          <button className="btn-ghost" onClick={enviar} disabled={status === 'enviando'}>
-            {status === 'enviando' ? 'Enviando…' : 'Enviar link'}
-          </button>
-          {status === 'erro' && <span className="admin-erro">Erro ao enviar</span>}
-        </div>
-      )}
+      {erroRede && <span className="admin-erro">⚠️ Sem conexão com o servidor</span>}
+      <button className="admin-link" onClick={sair}>Sair</button>
     </div>
   )
 }

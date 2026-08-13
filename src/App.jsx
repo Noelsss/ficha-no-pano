@@ -7,15 +7,36 @@ import TabHistorico from './components/TabHistorico'
 import TabCalendario from './components/TabCalendario'
 import TabAcerto from './components/TabAcerto'
 import AdminBar from './components/AdminBar'
+import Login from './components/Login'
+import TabAcessos from './components/TabAcessos'
+
+function Topo() {
+  return (
+    <header className="topo">
+      <div className="brand">
+        <span className="suit">♠</span>
+        <div>
+          <h1>Ficha no Pano</h1>
+          <p>30ª Temporada</p>
+        </div>
+        <span className="suit red">♥</span>
+      </div>
+    </header>
+  )
+}
 
 export default function App() {
   const {
     etapas, players, ranking, proximoNum, pagamentos,
-    addEtapa, deleteEtapa, addPlayer, resetTudo,
+    addEtapa, deleteEtapa, addPlayer,
     setPagamento, aplicarPagamentos,
-    session, isAdmin, carregando, online, entrar, sair,
+    solicitacoes, autorizados, minhaSolicitacao,
+    aprovar, recusar, revogar, solicitar,
+    session, me, autorizado, isAdmin, carregando, erroRede, entrar, sair,
   } = usePokerState()
   const [tab, setTab] = useState('ranking')
+
+  const pendentes = solicitacoes.filter((s) => s.status === 'pendente').length
 
   const tabs = [
     { id: 'ranking', label: 'Ranking' },
@@ -23,33 +44,53 @@ export default function App() {
     ...(isAdmin ? [
       { id: 'etapa', label: 'Nova Etapa' },
       { id: 'acerto', label: 'Acerto' },
+      { id: 'acessos', label: pendentes ? `Acessos (${pendentes})` : 'Acessos' },
     ] : []),
     { id: 'historico', label: 'Histórico' },
   ]
 
-  // se o admin sair enquanto está numa aba de edição, volta para o ranking
+  // se o admin sair enquanto está numa aba restrita, volta para o ranking
+  const ABAS_ADMIN = ['etapa', 'acerto', 'acessos']
   useEffect(() => {
-    if ((tab === 'etapa' || tab === 'acerto') && !isAdmin) setTab('ranking')
+    if (ABAS_ADMIN.includes(tab) && !isAdmin) setTab('ranking')
   }, [tab, isAdmin])
+
+  if (carregando) {
+    return (
+      <div className="app">
+        <Topo />
+        <p className="portao-carregando">Carregando…</p>
+      </div>
+    )
+  }
+
+  // Portão: sem sessão, ou logado sem estar na lista de autorizados,
+  // nada do grupo é renderizado.
+  if (!session || !autorizado) {
+    return (
+      <div className="app">
+        <Topo />
+        <Login
+          entrar={entrar}
+          sair={sair}
+          solicitar={solicitar}
+          semAcesso={!!session && !autorizado}
+          email={session?.user?.email}
+          minhaSolicitacao={minhaSolicitacao}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="app">
-      <header className="topo">
-        <div className="brand">
-          <span className="suit">♠</span>
-          <div>
-            <h1>Ficha no Pano</h1>
-            <p>30ª Temporada</p>
-          </div>
-          <span className="suit red">♥</span>
-        </div>
-      </header>
+      <Topo />
 
       <AdminBar
         isAdmin={isAdmin}
+        me={me}
         session={session}
-        online={online}
-        entrar={entrar}
+        erroRede={erroRede}
         sair={sair}
       />
 
@@ -94,26 +135,25 @@ export default function App() {
             aplicarPagamentos={aplicarPagamentos}
           />
         )}
+        {tab === 'acessos' && isAdmin && (
+          <TabAcessos
+            solicitacoes={solicitacoes}
+            autorizados={autorizados}
+            aprovar={aprovar}
+            recusar={recusar}
+            revogar={revogar}
+            meuEmail={me?.email}
+          />
+        )}
         {tab === 'historico' && (
-          <TabHistorico etapas={etapas} onExcluir={deleteEtapa} canEdit={isAdmin} />
+          <TabHistorico
+            etapas={etapas}
+            onExcluir={deleteEtapa}
+            canEdit={isAdmin}
+            pix={me?.pix}
+          />
         )}
       </main>
-
-      <footer className="rodape">
-        {carregando && <span className="rodape-status">Carregando…</span>}
-        {isAdmin && (
-          <button
-            className="btn-reset"
-            onClick={() => {
-              if (confirm('Restaurar todos os dados originais da 30ª temporada? Isso apaga as alterações.')) {
-                resetTudo()
-              }
-            }}
-          >
-            Restaurar dados originais
-          </button>
-        )}
-      </footer>
     </div>
   )
 }
