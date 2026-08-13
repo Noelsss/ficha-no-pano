@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { calcularAcerto, indicePremio, posLabel, premioDoJogador } from '../lib/scoring'
+import {
+  calcularAcerto, indicePremio, labelPosicao, posicaoDoResultado, premioDoJogador,
+} from '../lib/scoring'
 
 const fmt = (n) =>
   n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -66,9 +68,14 @@ function EtapaItem({ e, onExcluir, onEditar, canEdit, pix }) {
       alert('Não consegui copiar automaticamente. Tente de novo.')
     }
   }
-  const ordenados = [...e.resultados].sort((a, b) => b.pts - a.pts)
-  const pontuaram = ordenados.filter((r) => r.pts >= 2)
-  const demais = ordenados.filter((r) => r.pts < 2)
+  const ordenados = [...e.resultados].sort((a, b) => {
+    const pa = posicaoDoResultado(a) || Infinity
+    const pb = posicaoDoResultado(b) || Infinity
+    return pa - pb
+  })
+  // colocados aparecem na lista; sem colocação (etapas antigas) vão no rodapé
+  const pontuaram = ordenados.filter((r) => posicaoDoResultado(r) > 0)
+  const demais = ordenados.filter((r) => posicaoDoResultado(r) === 0)
   const acerto = e.detalhado ? calcularAcerto(e) : null
   const titulo = ehMF ? '🏆 Mesa Final' : `Etapa #${e.num}`
 
@@ -128,7 +135,9 @@ function EtapaItem({ e, onExcluir, onEditar, canEdit, pix }) {
           const idx = indicePremio(r.pts)
           return (
             <li key={r.name}>
-              <span className={`medal ${medalha(idx)}`}>{posLabel(r.pts)}</span>
+              <span className={`medal ${medalha(idx)}`}>
+                {labelPosicao(posicaoDoResultado(r))}
+              </span>
               {r.name}
               <span className="pts-tag">{r.pts} pts</span>
               {idx >= 0 && (

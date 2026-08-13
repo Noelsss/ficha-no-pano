@@ -11,24 +11,23 @@ export function pontosPorPosicao(pos) {
 }
 
 // Converte pontos de volta para a posição (0 = participou, sem colocação).
-// Usado ao reabrir uma etapa salva para edição.
+// Só funciona até o 7º: do 8º em diante todos valem 1 ponto, e a posição não
+// dá para ser deduzida. Por isso existe o campo `pos`.
 export function posicaoPorPontos(pts) {
   const achado = Object.entries(TABELA).find(([, v]) => v === pts)
   return achado ? Number(achado[0]) : 0
 }
 
-// Converte pontos de volta para o rótulo de posição (para exibição).
-export function posLabel(pts) {
-  switch (pts) {
-    case 10: return '1º'
-    case 8: return '2º'
-    case 6: return '3º'
-    case 5: return '4º'
-    case 4: return '5º'
-    case 3: return '6º'
-    case 2: return '7º'
-    default: return null // 1 = participou
-  }
+// A colocação de um jogador. Etapas gravadas antes do campo `pos` existir
+// caem no fallback pelos pontos.
+export function posicaoDoResultado(r) {
+  return typeof r.pos === 'number' && r.pos > 0 ? r.pos : posicaoPorPontos(r.pts)
+}
+
+// Rótulo da colocação a partir da posição (não dos pontos), então funciona
+// para qualquer lugar, inclusive do 8º em diante.
+export function labelPosicao(pos) {
+  return pos > 0 ? `${pos}º` : null
 }
 
 // Total arrecadado (buy-ins + rebuys)

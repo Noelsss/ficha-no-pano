@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   calcularAcerto, calcularFundoFT, calcularPremios, calcularTotal,
-  dividirAcordo, indicePremio, pontosPorPosicao, posicaoPorPontos,
+  dividirAcordo, indicePremio, pontosPorPosicao, posicaoDoResultado,
 } from '../lib/scoring'
 
 const fmt = (n) =>
@@ -57,7 +57,7 @@ export default function TabEtapa({
   })
   const [posByName, setPos] = useState(() => {
     const m = {}
-    for (const r of etapaEdit?.resultados ?? []) m[r.name] = posicaoPorPontos(r.pts)
+    for (const r of etapaEdit?.resultados ?? []) m[r.name] = posicaoDoResultado(r)
     return m
   })
 
@@ -137,9 +137,11 @@ export default function TabEtapa({
 
   // monta os resultados (com prêmio de acordo quando houver)
   const montarResultados = () => mesa.map((name) => {
+    const pos = posByName[name] || 0
     const base = {
       name,
-      pts: pontosPorPosicao(posByName[name] || 0),
+      pos,                                   // colocação real, inclusive além do 7º
+      pts: pontosPorPosicao(pos),            // pontos da tabela (8º em diante = 1)
       rebuys: rebuysByName[name] || 0,
     }
     if (acordoValido && acordo.includes(name)) {
@@ -343,6 +345,10 @@ export default function TabEtapa({
 
           {/* 3) Posições — em destaque, é o que define pontos e prêmio */}
           <h3>3. Posições <span className="badge">define pontos e prêmio</span></h3>
+          <p className="hint">
+            Marque a colocação de todos que jogaram. Do 8º lugar em diante a
+            pontuação é 1 para todos, mas a colocação fica registrada.
+          </p>
           {semPodio && (
             <div className="alerta">
               ⚠️ Ninguém tem colocação ainda. Sem definir ao menos o 1º lugar,
@@ -361,7 +367,7 @@ export default function TabEtapa({
                     onChange={(e) => setPosicao(name, Number(e.target.value))}
                   >
                     <option value={0}>— participou</option>
-                    {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                    {Array.from({ length: mesa.length }, (_, i) => i + 1).map((n) => (
                       <option key={n} value={n} disabled={posUsadas[n] && posUsadas[n] !== name}>
                         {n}º lugar
                       </option>
