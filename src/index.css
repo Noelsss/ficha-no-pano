@@ -667,6 +667,18 @@ button { font-family: inherit; cursor: pointer; }
   gap: 10px;
   padding: 5px 0;
 }
+.acordo-soma {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+.acordo-soma.ok { color: var(--accent); }
+.acordo-soma.ruim { color: var(--neg); }
 .acordo-peso { display: flex; align-items: center; gap: 5px; }
 .acordo-peso input { width: 70px; padding: 5px 8px; font-size: 13px; }
 .tag-acordo {

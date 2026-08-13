@@ -112,25 +112,60 @@ export default function TabEtapa({
     [acordo, posByName, premios],
   )
 
+  // O que cada um levaria pela posição, antes do acordo.
+  const premioPorPosicao = (name) => {
+    const idx = indicePremio(pontosPorPosicao(posByName[name] || 0))
+    return idx >= 0 ? premios[idx] || 0 : 0
+  }
+
+  // Percentual sugerido: a fatia de cada um DENTRO do bolo, somando 100.
+  // Não são os 60/30/10 da tabela — aqueles são sobre o bolão inteiro, e
+  // somariam 90 entre 1º e 2º, o que induziria a erro no rateio.
+  const pesosPadrao = useMemo(() => {
+    if (acordo.length < 2 || boloAcordo <= 0) return {}
+    const pcts = dividirAcordo(100, acordo.map(premioPorPosicao))
+    return Object.fromEntries(acordo.map((n, i) => [n, pcts[i]]))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acordo, posByName, premios, boloAcordo])
+
+  // Peso em uso: o que a pessoa digitou, ou o sugerido enquanto não digitou.
+  const pesoDe = (n) => (
+    pesos[n] === undefined || pesos[n] === ''
+      ? (pesosPadrao[n] ?? 0)
+      : Number(pesos[n]) || 0
+  )
+
+  const somaPesos = acordo.reduce((s, n) => s + pesoDe(n), 0)
+  const somaOk = Math.abs(somaPesos - 100) < 0.01
+
+  // Enquanto ninguém digitou nada, o padrão precisa ser exatamente o prêmio da
+  // posição. Passar pelo percentual inteiro introduziria alguns reais de
+  // arredondamento (67% de 972 = 651, e não os 648 do 1º lugar).
+  const pesoEditado = acordo.some((n) => pesos[n] !== undefined && pesos[n] !== '')
+
   const valoresAcordo = useMemo(() => {
     if (acordo.length < 2) return {}
-    const lista = dividirAcordo(boloAcordo, acordo.map((n) => Number(pesos[n]) || 0))
+    if (!pesoEditado) {
+      return Object.fromEntries(acordo.map((n) => [n, premioPorPosicao(n)]))
+    }
+    const lista = dividirAcordo(boloAcordo, acordo.map(pesoDe))
     return Object.fromEntries(acordo.map((n, i) => [n, lista[i]]))
-  }, [acordo, pesos, boloAcordo])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acordo, pesos, pesosPadrao, boloAcordo, pesoEditado])
 
   const acordoValido = acordo.length >= 2
-    && acordo.every((n) => (Number(pesos[n]) || 0) > 0)
+    && boloAcordo > 0
+    && acordo.every((n) => pesoDe(n) > 0)
 
   function toggleAcordo(name) {
     setAcordo((prev) => {
       if (prev.includes(name)) {
         const resto = prev.filter((n) => n !== name)
+        // ao sair alguém, os percentuais digitados deixam de fazer sentido
+        setPesos({})
         return resto.length < 2 ? [] : resto
       }
-      // peso inicial: a proporção da tabela (60/30/10) da posição da pessoa
-      const idx = indicePremio(pontosPorPosicao(posByName[name] || 0))
-      const padraoPeso = idx === 0 ? 60 : idx === 1 ? 30 : idx === 2 ? 10 : 0
-      setPesos((p) => ({ ...p, [name]: p[name] ?? padraoPeso }))
+      setPesos({})
       return [...prev, name]
     })
   }
@@ -399,16 +434,23 @@ export default function TabEtapa({
           {acordo.length >= 2 && (
             <div className="acordo-box">
               <div className="acordo-bolo">
-                Bolo do acordo: <strong>{fmt(boloAcordo)}</strong>
-                <small> — soma dos prêmios das posições de quem entrou</small>
+                Valor somado dos acordantes: <strong>{fmt(boloAcordo)}</strong>
+                <small>
+                  {' '}({acordo.map((n) => fmt(premioPorPosicao(n))).join(' + ')})
+                </small>
               </div>
+              <p className="hint">
+                Informe quanto cada um leva <strong>desse valor somado</strong> —
+                as porcentagens precisam fechar 100%. Um acordo 60/40 é
+                60% e 40% de {fmt(boloAcordo)}.
+              </p>
               {acordo.map((name) => (
                 <div key={name} className="acordo-linha">
                   <span className="mesa-nome">{name}</span>
                   <div className="acordo-peso">
                     <input
-                      type="number" min="0" step="1"
-                      value={pesos[name] ?? ''}
+                      type="number" min="0" max="100" step="1"
+                      value={pesos[name] ?? pesosPadrao[name] ?? ''}
                       onChange={(e) => setPesos((p) => ({ ...p, [name]: e.target.value }))}
                     />
                     <span>%</span>
@@ -416,8 +458,16 @@ export default function TabEtapa({
                   <strong className="pos">{fmt(valoresAcordo[name] ?? 0)}</strong>
                 </div>
               ))}
-              {!acordoValido && (
-                <p className="portao-erro">Defina uma proporção maior que zero para cada um.</p>
+              <div className={`acordo-soma ${somaOk ? 'ok' : 'ruim'}`}>
+                <span>Soma</span>
+                <strong>{somaPesos}%</strong>
+                <span>{somaOk ? '✓' : '— precisa fechar 100%'}</span>
+              </div>
+              {boloAcordo <= 0 && (
+                <p className="portao-erro">
+                  Nenhum dos escolhidos está no pódio, então não há premiação
+                  para dividir. Defina as posições primeiro.
+                </p>
               )}
             </div>
           )}
