@@ -627,6 +627,68 @@ button { font-family: inherit; cursor: pointer; }
 .previa-bloco.furos strong { color: var(--neg); }
 .previa-botoes { display: flex; gap: 10px; margin-top: 14px; }
 
+/* Posições, acordo e edição de etapa */
+.alerta {
+  background: #3a2a12;
+  border: 1px solid #6b4a1c;
+  color: #f0c98a;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+.posicoes { display: grid; gap: 8px; }
+.pos-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 9px 14px;
+}
+.pos-row.podio { border-color: var(--accent); }
+.badge.opcional { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+.acordo-box {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-top: 12px;
+}
+.acordo-bolo { font-size: 13px; margin-bottom: 10px; }
+.acordo-bolo small { color: var(--muted); }
+.acordo-linha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+}
+.acordo-peso { display: flex; align-items: center; gap: 5px; }
+.acordo-peso input { width: 70px; padding: 5px 8px; font-size: 13px; }
+.tag-acordo {
+  background: var(--line);
+  color: var(--muted);
+  font-size: 10px;
+  border-radius: 5px;
+  padding: 1px 5px;
+  margin-left: 6px;
+  text-transform: uppercase;
+}
+.btn-edit {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 5px 11px;
+  font-size: 12px;
+}
+.btn-edit:hover { color: var(--accent); border-color: var(--accent); }
+.btn-mini { padding: 3px 9px; font-size: 11px; margin-left: 8px; }
+
 /* Aba Acessos */
 .ajuda { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 0 0 18px; }
 .sub {

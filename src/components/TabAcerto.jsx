@@ -42,6 +42,20 @@ export default function TabAcerto({
     })
   }
 
+  // Marca de uma vez tudo que ainda está pendente numa etapa (ou na temporada
+  // inteira). Serve para as etapas antigas, já quitadas fora do app.
+  function quitar(lista, rotulo) {
+    const pendentes = lista.filter((c) => !estaPago(c))
+    if (pendentes.length === 0) return
+    if (!confirm(
+      `Marcar ${pendentes.length} lançamento(s) de ${rotulo} como pagos?`,
+    )) return
+    aplicarPagamentos(pendentes.map((c) => ({
+      etapaNum: c.etapaNum, player: c.player, pago: true,
+      valor: c.valor, dataPago: null, fonte: 'manual',
+    })))
+  }
+
   function aoEscolherArquivo(e) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -73,6 +87,13 @@ export default function TabAcerto({
         />
         <button className="btn-primary" onClick={() => inputRef.current?.click()}>
           📥 Importar extrato (.csv)
+        </button>
+        <button
+          className="btn-ghost"
+          onClick={() => quitar(cobrancas, 'toda a temporada')}
+          disabled={cobrancas.every(estaPago)}
+        >
+          ✅ Marcar tudo como pago
         </button>
       </div>
 
@@ -139,7 +160,17 @@ export default function TabAcerto({
         const quit = lista.filter(estaPago).length
         return (
           <div key={num} className="acerto-etapa">
-            <h3>Etapa #{num} <span className="badge">{quit}/{lista.length} quitados</span></h3>
+            <h3>
+              Etapa #{num} <span className="badge">{quit}/{lista.length} quitados</span>
+              {quit < lista.length && (
+                <button
+                  className="btn-ghost btn-mini"
+                  onClick={() => quitar(lista, `a etapa #${num}`)}
+                >
+                  marcar etapa como paga
+                </button>
+              )}
+            </h3>
             <div className="tabela-wrap">
               <table className="tabela compacta">
                 <thead>

@@ -35,7 +35,9 @@ export default function App() {
     session, me, autorizado, isAdmin, carregando, erroRede, entrar, sair,
   } = usePokerState()
   const [tab, setTab] = useState('ranking')
+  const [editandoNum, setEditandoNum] = useState(null)
 
+  const etapaEdit = etapas.find((e) => e.num === editandoNum) ?? null
   const pendentes = solicitacoes.filter((s) => s.status === 'pendente').length
 
   const tabs = [
@@ -115,12 +117,16 @@ export default function App() {
         )}
         {tab === 'etapa' && isAdmin && (
           <TabEtapa
+            key={etapaEdit ? `edit-${etapaEdit.num}` : 'nova'}
             players={players}
             proximoNum={proximoNum}
             calendario={CALENDARIO}
             etapas={etapas}
+            etapaEdit={etapaEdit}
+            onCancelarEdicao={() => { setEditandoNum(null); setTab('historico') }}
             onSalvar={(e) => {
               addEtapa(e)
+              setEditandoNum(null)
               setTab('historico')
             }}
             onAddPlayer={addPlayer}
@@ -149,6 +155,7 @@ export default function App() {
           <TabHistorico
             etapas={etapas}
             onExcluir={deleteEtapa}
+            onEditar={(n) => { setEditandoNum(n); setTab('etapa') }}
             canEdit={isAdmin}
             pix={me?.pix}
           />

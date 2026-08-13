@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { calcularAcerto, indicePremio, posLabel } from '../lib/scoring'
+import { calcularAcerto, indicePremio, posLabel, premioDoJogador } from '../lib/scoring'
 
 const fmt = (n) =>
   n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -31,7 +31,7 @@ function montarTextoWhatsapp(e, pix) {
     L.push('🏆 *Premiação*')
     for (const r of podio) {
       const idx = indicePremio(r.pts)
-      L.push(`${MEDALHAS[idx]} ${r.name} — ${fmt(e.prizes[idx])}`)
+      L.push(`${MEDALHAS[idx]} ${r.name} — ${fmt(premioDoJogador(r, e.prizes))}${typeof r.premio === 'number' ? ' (acordo)' : ''}`)
     }
   }
 
@@ -52,7 +52,7 @@ function montarTextoWhatsapp(e, pix) {
   return L.join('\n')
 }
 
-function EtapaItem({ e, onExcluir, canEdit, pix }) {
+function EtapaItem({ e, onExcluir, onEditar, canEdit, pix }) {
   const [verAcerto, setVerAcerto] = useState(false)
   const [copiado, setCopiado] = useState(false)
   const ehMF = e.num === 'MF'
@@ -91,6 +91,15 @@ function EtapaItem({ e, onExcluir, canEdit, pix }) {
         )}
         {canEdit && (
           <button
+            className="btn-edit"
+            title="Editar posicoes, rebuys e acordo"
+            onClick={() => onEditar(e.num)}
+          >
+            Editar
+          </button>
+        )}
+        {canEdit && (
+          <button
             className="btn-del"
             title="Excluir"
             onClick={() => {
@@ -123,7 +132,7 @@ function EtapaItem({ e, onExcluir, canEdit, pix }) {
               {r.name}
               <span className="pts-tag">{r.pts} pts</span>
               {idx >= 0 && (
-                <span className="premio-tag">{fmt(e.prizes[idx])}</span>
+                <span className="premio-tag">{fmt(premioDoJogador(r, e.prizes))}</span>
               )}
             </li>
           )
@@ -172,7 +181,7 @@ function EtapaItem({ e, onExcluir, canEdit, pix }) {
   )
 }
 
-export default function TabHistorico({ etapas, onExcluir, canEdit, pix }) {
+export default function TabHistorico({ etapas, onExcluir, onEditar, canEdit, pix }) {
   if (!etapas.length) {
     return (
       <div className="card">
@@ -189,7 +198,7 @@ export default function TabHistorico({ etapas, onExcluir, canEdit, pix }) {
     <div className="card">
       <h2>Histórico de Etapas</h2>
       {ordenadas.map((e) => (
-        <EtapaItem key={e.num} e={e} onExcluir={onExcluir} canEdit={canEdit} pix={pix} />
+        <EtapaItem key={e.num} e={e} onExcluir={onExcluir} onEditar={onEditar} canEdit={canEdit} pix={pix} />
       ))}
     </div>
   )

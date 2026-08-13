@@ -10,6 +10,13 @@ export function pontosPorPosicao(pos) {
   return TABELA[pos] ?? 1
 }
 
+// Converte pontos de volta para a posição (0 = participou, sem colocação).
+// Usado ao reabrir uma etapa salva para edição.
+export function posicaoPorPontos(pts) {
+  const achado = Object.entries(TABELA).find(([, v]) => v === pts)
+  return achado ? Number(achado[0]) : 0
+}
+
 // Converte pontos de volta para o rótulo de posição (para exibição).
 export function posLabel(pts) {
   switch (pts) {
@@ -56,22 +63,45 @@ export function indicePremio(pts) {
   return -1
 }
 
+// Quanto um jogador recebe de prêmio.
+// `premio` só existe quando houve acordo: os envolvidos combinam uma divisão
+// diferente da tabela 60/30/10, mas as posições continuam valendo para o
+// ranking. Sem acordo, o prêmio vem da posição.
+export function premioDoJogador(r, prizes = []) {
+  if (typeof r.premio === 'number') return r.premio
+  const idx = indicePremio(r.pts)
+  return idx >= 0 ? prizes[idx] || 0 : 0
+}
+
 // Acerto de contas de uma etapa: quanto cada jogador pagou e recebeu.
-// pagou = 1 buy-in + (rebuys do jogador × valor do rebuy)
-// recebeu = prêmio, se ficou no pódio (1º/2º/3º)
+// pagou  = 1 buy-in + (rebuys do jogador × valor do rebuy)
+// recebeu = prêmio da posição, ou o valor do acordo se houver
+// saldo  = já é o líquido: quem ficou no pódio e ainda deve entra com a
+//          diferença, não com o valor cheio da entrada.
 export function calcularAcerto(etapa) {
   return etapa.resultados
     .map((r) => {
       const rb = r.rebuys || 0
       const pagou = etapa.buyin + rb * etapa.rebuy
-      const idx = indicePremio(r.pts)
-      const recebeu = idx >= 0 ? etapa.prizes[idx] || 0 : 0
+      const recebeu = premioDoJogador(r, etapa.prizes)
       return {
         name: r.name, rebuys: rb, pts: r.pts,
         pagou, recebeu, saldo: recebeu - pagou,
+        emAcordo: typeof r.premio === 'number',
       }
     })
     .sort((a, b) => b.saldo - a.saldo || b.recebeu - a.recebeu)
+}
+
+// Divide um bolo entre jogadores segundo pesos (ex.: [60, 40]).
+// Ajusta o último para o total fechar exatamente, sem centavos perdidos.
+export function dividirAcordo(total, pesos) {
+  const soma = pesos.reduce((s, p) => s + p, 0)
+  if (soma <= 0) return pesos.map(() => 0)
+  const valores = pesos.map((p) => Math.round((total * p) / soma))
+  const diff = total - valores.reduce((s, v) => s + v, 0)
+  if (valores.length) valores[valores.length - 1] += diff
+  return valores
 }
 
 // Monta o ranking geral a partir das etapas.
