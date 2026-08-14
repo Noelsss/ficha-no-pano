@@ -5,8 +5,12 @@
 --
 -- Antes: qualquer pessoa na internet lia etapas, players e
 -- pagamentos (nome, valor, data e status de pagamento).
--- Depois: só quem estiver na tabela `autorizados` lê qualquer coisa,
--- e só quem for `admin` escreve.
+-- Depois: só quem estiver na tabela `autorizados` lê etapas e players,
+-- só o `admin` lê pagamentos, e só o `admin` escreve.
+--
+-- Pode rodar de novo com segurança: se uma versão anterior deste
+-- arquivo tiver criado a policy "autorizado le pagamentos", o passo 3
+-- a remove.
 -- ============================================================
 
 -- ------------------------------------------------------------
@@ -72,6 +76,10 @@ drop policy if exists "admin escreve etapas"     on etapas;
 drop policy if exists "admin escreve players"    on players;
 drop policy if exists "admin escreve pagamentos" on pagamentos;
 
+-- Criada por uma versão anterior deste arquivo, quando pagamentos ainda
+-- era legível por qualquer autorizado. Sai fora.
+drop policy if exists "autorizado le pagamentos" on pagamentos;
+
 -- ------------------------------------------------------------
 -- 4) Novas policies: autorizado lê, admin escreve
 -- ------------------------------------------------------------
@@ -92,8 +100,11 @@ create policy "admin escreve players" on players
   for all to authenticated
   using (public.is_admin()) with check (public.is_admin());
 
-create policy "autorizado le pagamentos" on pagamentos
-  for select to authenticated using (public.is_autorizado());
+-- Pagamentos é a exceção: nem os autorizados leem, só o admin.
+-- A tabela tem valor devido, data e status de cada jogador, e não há
+-- razão para um dos 17 baixar a situação financeira dos outros.
+-- A policy "for all" abaixo já cobre o SELECT do admin, então não
+-- falta nenhuma policy de leitura aqui.
 create policy "admin escreve pagamentos" on pagamentos
   for all to authenticated
   using (public.is_admin()) with check (public.is_admin());
