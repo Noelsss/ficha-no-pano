@@ -1,7 +1,9 @@
 import { calcularAcerto } from './scoring'
 
-// O Glauber é a banca: as transações dele (e o saldo dele) são internas.
-export const BANCA = 'Glauber'
+// Antes havia uma constante BANCA = 'Glauber', que excluía o Glauber do
+// acerto e da conciliação, por ele ser quem segurava o dinheiro. Com a conta
+// específica do poker isso deixou de valer: ele deposita como todo mundo e
+// precisa constar no controle igual aos demais.
 
 // Mapa nome-do-banco (normalizado) → jogador. Derivado do extrato do PicPay.
 const ALIASES = [
@@ -88,7 +90,7 @@ export function parseExtrato(texto) {
   return trans
 }
 
-// Lista de cobranças esperadas (deve/recebe) por jogador, exceto a banca.
+// Lista de cobranças esperadas (deve/recebe) por jogador.
 export function cobrancasEsperadas(etapas) {
   const lista = []
   const ordem = [...etapas].sort((a, b) => {
@@ -98,7 +100,7 @@ export function cobrancasEsperadas(etapas) {
   for (const e of ordem) {
     if (e.num === 'MF') continue
     for (const a of calcularAcerto(e)) {
-      if (a.name === BANCA || a.saldo === 0) continue
+      if (a.saldo === 0) continue   // quem empatou não tem o que acertar
       lista.push({
         etapaNum: e.num,
         data: e.data,
@@ -117,13 +119,12 @@ export function cobrancasEsperadas(etapas) {
 export function conciliar({ etapas, transacoes, players = [] }) {
   const cobrancas = cobrancasEsperadas(etapas)
 
-  // transações por jogador (exclui a banca)
+  // transações por jogador
   const txPorJogador = {}
   const semDono = []
   for (const t of transacoes) {
     const jogador = resolverJogador(t.nome, players)
     if (!jogador) { semDono.push(t); continue }
-    if (jogador === BANCA) continue
     ;(txPorJogador[jogador] ||= []).push({ ...t, usada: false })
   }
   for (const j of Object.keys(txPorJogador)) {
