@@ -81,6 +81,12 @@ npm install
 npm run dev
 ```
 
+Abre em `http://localhost:5173/ficha-no-pano/`. Não é preciso `.env`: a URL e a
+anon key ficam em `src/lib/supabaseClient.js`, protegidas por RLS.
+
+Para configurar o projeto numa máquina nova, incluindo o que vem de fora do
+git, ver [MAQUINA-NOVA.md](MAQUINA-NOVA.md).
+
 ## Deploy
 
 O site é publicado no GitHub Pages a partir da branch `gh-pages`:
