@@ -1,0 +1,34 @@
+name: Manter Supabase ativo
+
+# O plano grátis do Supabase pausa o projeto após ~1 semana sem uso.
+# Esta consulta a cada 3 dias conta como uso e evita a pausa.
+#
+# A chave abaixo é a anon — a mesma que já vai no bundle público do site
+# (src/lib/supabaseClient.js). Sem login, o RLS devolve lista vazia:
+# a consulta não lê dado nenhum, só mantém o banco acordado.
+#
+# Atenção: em repositório público o GitHub desliga workflows agendados
+# após 60 dias sem commit. Se o repo ficar parado, reative em
+# Actions → "Manter Supabase ativo" → Enable workflow.
+
+on:
+  schedule:
+    - cron: '0 12 */3 * *'   # 12h UTC (9h de Brasília), a cada 3 dias
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consulta o banco
+        env:
+          SUPABASE_URL: https://thulkjfgebexnerrtnnr.supabase.co
+          SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRodWxramZnZWJleG5lcnJ0bm5yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2NDYyODgsImV4cCI6MjEwMjIyMjI4OH0.xQIfwv3l1_0cVmNr64rkMThrzcoWJoe8UltvZ0PdEZQ
+        # --fail faz o job falhar se o banco não responder 2xx,
+        # e o GitHub avisa por e-mail quando um workflow falha.
+        run: |
+          curl --fail --silent --show-error --max-time 30 --retry 3 --retry-delay 10 \
+            "$SUPABASE_URL/rest/v1/etapas?select=num&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY"
