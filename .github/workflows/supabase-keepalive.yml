@@ -1,12 +1,15 @@
 name: Manter Supabase ativo
 
 # O plano grátis do Supabase pausa o projeto após ~1 semana sem "atividade
-# de banco suficiente". Um SELECT anônimo a cada 3 dias não bastou (pausou
-# em 10/2026), então agora é uma escrita por dia: a função keepalive()
-# atualiza um horário (supabase/2026-10-21-keepalive.sql).
+# de banco suficiente". Não bastou um SELECT anônimo a cada 3 dias (pausou
+# em 10/2026) nem uma escrita anônima por dia (pausou em 27/10/2026). Agora
+# o job faz login como um usuário-robô, chama keepalive() autenticado e faz
+# logout (supabase/2026-10-30-keepalive-robo.sql).
 #
-# A chave abaixo é a anon — a mesma que já vai no bundle público do site
-# (src/lib/supabaseClient.js). A função não lê nem devolve dado do grupo.
+# A anon key abaixo é a mesma que já vai no bundle público do site
+# (src/lib/supabaseClient.js). E-mail e senha do robô ficam nos Secrets
+# SUPABASE_ROBO_EMAIL e SUPABASE_ROBO_SENHA. O robô não está em
+# `autorizados`: o RLS não deixa ele ver nada do grupo.
 #
 # Atenção: em repositório público o GitHub desliga workflows agendados
 # após 60 dias sem commit. Se o repo ficar parado, reative em
@@ -23,14 +26,27 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Grava o batimento
+      - name: Login do robô, batimento e logout
         env:
           SUPABASE_URL: https://thulkjfgebexnerrtnnr.supabase.co
           SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRodWxramZnZWJleG5lcnJ0bm5yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2NDYyODgsImV4cCI6MjEwMjIyMjI4OH0.xQIfwv3l1_0cVmNr64rkMThrzcoWJoe8UltvZ0PdEZQ
+          ROBO_EMAIL: ${{ secrets.SUPABASE_ROBO_EMAIL }}
+          ROBO_SENHA: ${{ secrets.SUPABASE_ROBO_SENHA }}
         # --fail faz o job falhar se o banco não responder 2xx,
         # e o GitHub avisa por e-mail quando um workflow falha.
         run: |
-          curl --fail --silent --show-error --max-time 30 --retry 3 --retry-delay 10 \
-            -X POST "$SUPABASE_URL/rest/v1/rpc/keepalive" \
-            -H "apikey: $SUPABASE_ANON_KEY" \
-            -H "Content-Type: application/json" -d '{}'
+          set -euo pipefail
+          CURL="curl --fail --silent --show-error --max-time 30 --retry 3 --retry-delay 10"
+
+          TOKEN=$(jq -n --arg e "$ROBO_EMAIL" --arg s "$ROBO_SENHA" '{email: $e, password: $s}' \
+            | $CURL -X POST "$SUPABASE_URL/auth/v1/token?grant_type=password" \
+                -H "apikey: $SUPABASE_ANON_KEY" -H "Content-Type: application/json" -d @- \
+            | jq -r .access_token)
+          echo "::add-mask::$TOKEN"
+
+          echo "Batimento gravado em: $($CURL -X POST "$SUPABASE_URL/rest/v1/rpc/keepalive" \
+            -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" -d '{}')"
+
+          $CURL -X POST "$SUPABASE_URL/auth/v1/logout" \
+            -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $TOKEN"
