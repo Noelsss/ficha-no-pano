@@ -89,18 +89,13 @@ git, ver [MAQUINA-NOVA.md](MAQUINA-NOVA.md).
 
 ## Deploy
 
-O site é publicado no GitHub Pages a partir da branch `gh-pages`:
-
-```bash
-npm run deploy
-```
+O site é publicado automaticamente a cada push na `main`, pelo workflow
+`.github/workflows/deploy.yml` (fonte do Pages: "GitHub Actions"). Não há
+comando de deploy manual. Para republicar sem commit, rode o workflow em
+Actions → Deploy to GitHub Pages → Run workflow.
 
 O `base` em `vite.config.js` é `/ficha-no-pano/` e precisa bater com o nome do
 repositório.
-
-> O workflow em `.github/workflows/deploy.yml` falha a cada push, porque a
-> fonte do Pages é a branch `gh-pages` e não "GitHub Actions". Ou apague o
-> workflow, ou troque a fonte do Pages — não dá para manter os dois.
 
 ## Stack
 

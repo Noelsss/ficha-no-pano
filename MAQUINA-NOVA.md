@@ -69,18 +69,12 @@ segredo dentro.
 
 ## 6. Deploy
 
-```bash
-npm run deploy
-```
+Não há comando: cada `git push` na `main` publica o site sozinho, pelo
+workflow `.github/workflows/deploy.yml`. Na primeira vez o Git vai pedir
+credencial do GitHub (conta `Noelsss`) — o Credential Manager guarda daí em
+diante. `gh auth login` resolve de uma vez se o `gh` estiver instalado.
 
-Publica na branch `gh-pages`, que é a fonte do GitHub Pages. Na primeira vez o
-Git vai pedir credencial do GitHub (conta `Noelsss`) — o Credential Manager
-guarda daí em diante. `gh auth login` resolve de uma vez se o `gh` estiver
-instalado.
-
-Lembrando que o workflow em `.github/workflows/deploy.yml` falha a cada push,
-porque a fonte do Pages é a branch e não "GitHub Actions". Quem publica de fato
-é o comando acima.
+Para conferir se publicou: `gh run list --limit 3` (ou a aba Actions no GitHub).
 
 ## Conferir no fim
 
