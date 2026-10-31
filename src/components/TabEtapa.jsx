@@ -28,11 +28,12 @@ export default function TabEtapa({
   const temAgenda = agendadas.length > 0
   const padrao = agendadas[0]
 
-  // fundo acumulado sugerido p/ Mesa Final = soma dos fundos das etapas jogadas
+  // fundo acumulado sugerido p/ Mesa Final = 50% da soma dos fundos das etapas
+  // jogadas (os outros 50% vão para os 3 primeiros colocados da temporada)
   const acumuladoPadrao = useMemo(
-    () => etapas
+    () => Math.floor(etapas
       .filter((e) => e.num !== 'MF')
-      .reduce((s, e) => s + (e.fundoFT || 0), 0),
+      .reduce((s, e) => s + (e.fundoFT || 0), 0) / 2),
     [etapas],
   )
 
@@ -303,7 +304,7 @@ export default function TabEtapa({
           💰 Dinheiro acumulado (entra na divisão)
           <input type="number" min="0" value={acumulado}
             onChange={(e) => setAcumulado(e.target.value)} />
-          <small>Sugestão: {fmt(acumuladoPadrao)} — soma dos fundos das etapas jogadas.</small>
+          <small>Sugestão: {fmt(acumuladoPadrao)} — 50% dos fundos das etapas jogadas (os outros 50% vão para os 3 primeiros da temporada).</small>
         </label>
       )}
 

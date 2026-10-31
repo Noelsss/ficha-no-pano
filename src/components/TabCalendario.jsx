@@ -24,7 +24,7 @@ export default function TabCalendario({ calendario, etapas }) {
       <h2>Calendário da Temporada</h2>
 
       <div className="ft-resumo">
-        <span>🏁 Fundo da Mesa Final acumulado</span>
+        <span>🏁 Fundo acumulado da temporada</span>
         <strong>{fmt(fundoAcumulado)}</strong>
       </div>
 
@@ -60,7 +60,8 @@ export default function TabCalendario({ calendario, etapas }) {
 
       <p className="hint">
         ✅ realizada · ⏳ próxima · 🗓️ agendada. A Mesa Final reúne os líderes
-        e premia com o fundo acumulado ao longo da temporada.
+        e premia com 50% do fundo acumulado ao longo da temporada. Os outros
+        50% são distribuídos entre os 3 primeiros colocados da temporada.
       </p>
     </div>
   )

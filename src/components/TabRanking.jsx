@@ -1,4 +1,11 @@
-export default function TabRanking({ ranking, totalEtapas }) {
+const fmt = (n) =>
+  n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
+export default function TabRanking({ ranking, totalEtapas, fundoTemporada = 0 }) {
+  // 50% do fundo acumulado vai para os 3 primeiros da temporada (60/30/10);
+  // os outros 50% vão para a Mesa Final
+  const premioTemporada = fundoTemporada / 2
+
   if (!ranking.length) {
     return (
       <div className="card">
@@ -41,6 +48,16 @@ export default function TabRanking({ ranking, totalEtapas }) {
       </div>
       <p className="hint">
         🥇 1º · 🥈 2º · 🥉 3º lugares conquistados na temporada.
+      </p>
+      <p className="hint">
+        💰 Premiação da temporada: 🥇 1º <strong>{fmt(premioTemporada * 0.6)}</strong>
+        {' · '}🥈 2º <strong>{fmt(premioTemporada * 0.3)}</strong>
+        {' · '}🥉 3º <strong>{fmt(premioTemporada * 0.1)}</strong>
+        <br />
+        <small>
+          50% do fundo acumulado ({fmt(premioTemporada)}), dividido em 60% / 30% / 10%.
+          O valor cresce a cada etapa jogada.
+        </small>
       </p>
     </div>
   )

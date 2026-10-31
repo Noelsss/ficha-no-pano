@@ -110,7 +110,13 @@ export default function App() {
 
       <main>
         {tab === 'ranking' && (
-          <TabRanking ranking={ranking} totalEtapas={etapas.filter((e) => e.num !== 'MF').length} />
+          <TabRanking
+            ranking={ranking}
+            totalEtapas={etapas.filter((e) => e.num !== 'MF').length}
+            fundoTemporada={etapas
+              .filter((e) => e.num !== 'MF')
+              .reduce((s, e) => s + (e.fundoFT || 0), 0)}
+          />
         )}
         {tab === 'calendario' && (
           <TabCalendario calendario={CALENDARIO} etapas={etapas} />
