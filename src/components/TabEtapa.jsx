@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import {
   calcularAcerto, calcularFundoFT, calcularPremios, calcularTotal,
-  dividirAcordo, indicePremio, pontosPorPosicao, posicaoDoResultado,
+  complementoDe, dividirAcordo, indicePremio, pontosPorPosicao, posicaoDoResultado,
+  regraMesaFinal,
 } from '../lib/scoring'
 
 const fmt = (n) =>
@@ -35,6 +36,13 @@ export default function TabEtapa({
       .filter((e) => e.num !== 'MF')
       .reduce((s, e) => s + (e.fundoFT || 0), 0) / 2),
     [etapas],
+  )
+
+  // regra de participação na Mesa Final (piso e complemento de cada um)
+  const totalEtapasTemporada = calendario.filter((c) => c.num !== 'MF').length
+  const regraMF = useMemo(
+    () => regraMesaFinal(etapas, totalEtapasTemporada),
+    [etapas, totalEtapasTemporada],
   )
 
   const ehMFPadrao = padrao?.num === 'MF'
@@ -85,7 +93,25 @@ export default function TabEtapa({
     [mesa, rebuysByName],
   )
 
-  const total = calcularTotal(nB, nR, vB, vR)
+  // Complemento de quem jogou menos da metade das etapas. Ao editar uma Mesa
+  // Final já salva, vale o valor gravado (o que foi cobrado), não o recalculado.
+  const complementoGravado = useMemo(() => {
+    const m = {}
+    for (const r of etapaEdit?.resultados ?? []) {
+      if (typeof r.complemento === 'number') m[r.name] = r.complemento
+    }
+    return m
+  }, [etapaEdit])
+  const complementoDoJogador = (name) => {
+    if (!ehMF) return 0
+    // jogador que já estava na Mesa Final salva: mantém o que foi cobrado
+    const jaEstava = editando && etapaEdit?.resultados.some((r) => r.name === name)
+    if (jaEstava) return complementoGravado[name] ?? 0
+    return complementoDe(regraMF, name)
+  }
+  const somaComplementos = mesa.reduce((s, n) => s + complementoDoJogador(n), 0)
+
+  const total = calcularTotal(nB, nR, vB, vR) + somaComplementos
   const fundoFT = ehMF ? 0 : calcularFundoFT(nB, nR)
   const acum = ehMF ? Number(acumulado) || 0 : 0
   const poolEtapa = total - fundoFT + acum
@@ -180,6 +206,8 @@ export default function TabEtapa({
       pts: pontosPorPosicao(pos),            // pontos da tabela (8º em diante = 1)
       rebuys: rebuysByName[name] || 0,
     }
+    const compl = complementoDoJogador(name)
+    if (compl > 0) base.complemento = compl
     if (acordoValido && acordo.includes(name)) {
       base.premio = valoresAcordo[name] ?? 0
     }
@@ -189,7 +217,7 @@ export default function TabEtapa({
   const etapaDraft = useMemo(() => ({
     buyin: vB, rebuy: vR, prizes: premios, resultados: montarResultados(),
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [mesa, posByName, rebuysByName, vB, vR, premios, acordo, pesos, valoresAcordo, acordoValido])
+  }), [mesa, posByName, rebuysByName, vB, vR, premios, acordo, pesos, valoresAcordo, acordoValido, ehMF, regraMF])
 
   const acerto = useMemo(() => calcularAcerto(etapaDraft), [etapaDraft])
 
@@ -311,6 +339,13 @@ export default function TabEtapa({
       {/* 1) Quem está jogando */}
       <h3>1. {ehMF ? 'Quem está na mesa final?' : 'Quem está jogando?'}</h3>
       <p className="hint">Toque nos jogadores para colocá-los na mesa.</p>
+      {ehMF && regraMF.piso > 0 && (
+        <p className="hint">
+          Piso da Mesa Final: <strong>{fmt(regraMF.piso)}</strong>. Quem jogou
+          menos de {regraMF.minEtapas} etapas paga o complemento (💰) junto com
+          a entrada, e o valor entra na premiação.
+        </p>
+      )}
       <div className="chips">
         {players.map((name) => (
           <button
@@ -319,6 +354,9 @@ export default function TabEtapa({
             onClick={() => toggleMesa(name)}
           >
             {name}
+            {ehMF && complementoDoJogador(name) > 0 && (
+              <small className="chip-compl"> 💰 +{fmt(complementoDoJogador(name))}</small>
+            )}
           </button>
         ))}
       </div>
@@ -350,7 +388,10 @@ export default function TabEtapa({
             </div>
             <div className="ft-linha">
               {ehMF
-                ? <>💰 Inclui acumulado de <strong>{fmt(acum)}</strong> na divisão</>
+                ? <>
+                    💰 Inclui acumulado de <strong>{fmt(acum)}</strong> na divisão
+                    {somaComplementos > 0 && <> e <strong>{fmt(somaComplementos)}</strong> de complementos</>}
+                  </>
                 : <>🏁 Fundo da Mesa Final: <strong>{fmt(fundoFT)}</strong></>}
             </div>
           </div>
@@ -365,7 +406,12 @@ export default function TabEtapa({
                 <div key={name} className="mesa-row">
                   <div className="mesa-top">
                     <strong className="mesa-nome">{name}</strong>
-                    <span className="mesa-pagou">pagou {fmt(vB + rb * vR)}</span>
+                    <span className="mesa-pagou">
+                      pagou {fmt(vB + rb * vR + complementoDoJogador(name))}
+                      {complementoDoJogador(name) > 0 && (
+                        <small> (inclui complemento de {fmt(complementoDoJogador(name))})</small>
+                      )}
+                    </span>
                   </div>
                   <div className="mesa-bottom">
                     <div className="rebuy-ctrl">
@@ -495,6 +541,9 @@ export default function TabEtapa({
                     <td className="left nome">
                       {a.name}
                       {a.emAcordo && <span className="tag-acordo">acordo</span>}
+                      {complementoDoJogador(a.name) > 0 && (
+                        <span className="tag-acordo">+{fmt(complementoDoJogador(a.name))} complemento</span>
+                      )}
                     </td>
                     <td>{fmt(a.pagou)}</td>
                     <td>{a.recebeu ? fmt(a.recebeu) : '—'}</td>

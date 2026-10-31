@@ -73,7 +73,7 @@ export function premioDoJogador(r, prizes = []) {
 }
 
 // Acerto de contas de uma etapa: quanto cada jogador pagou e recebeu.
-// pagou  = 1 buy-in + (rebuys do jogador × valor do rebuy)
+// pagou  = 1 buy-in + (rebuys do jogador × valor do rebuy) + complemento
 // recebeu = prêmio da posição, ou o valor do acordo se houver
 // saldo  = já é o líquido: quem ficou no pódio e ainda deve entra com a
 //          diferença, não com o valor cheio da entrada.
@@ -81,7 +81,9 @@ export function calcularAcerto(etapa) {
   return etapa.resultados
     .map((r) => {
       const rb = r.rebuys || 0
-      const pagou = etapa.buyin + rb * etapa.rebuy
+      // complemento: o que falta para quem jogou menos da metade das etapas
+      // chegar ao piso da Mesa Final (só existe na própria Mesa Final)
+      const pagou = etapa.buyin + rb * etapa.rebuy + (r.complemento || 0)
       const recebeu = premioDoJogador(r, etapa.prizes)
       return {
         name: r.name, rebuys: rb, pts: r.pts,
@@ -137,4 +139,74 @@ export function calcularRanking(etapas) {
       b.terceiros - a.terceiros ||
       a.name.localeCompare(b.name, 'pt-BR'),
   )
+}
+
+// --- Participação na Mesa Final ---
+//
+// Regra do grupo: como todos que jogam contribuem para a Mesa Final, ninguém
+// pode se beneficiar do acumulado sem ter contribuído.
+//   • Quem jogou pelo menos metade das etapas (arredondando para cima) está
+//     classificado.
+//   • Piso = a menor contribuição para a Mesa Final entre esses classificados.
+//   • Quem jogou menos que a metade pode jogar pagando a diferença entre o
+//     que já contribuiu e o piso (o complemento), cobrado junto com a Mesa
+//     Final e somado à premiação dela.
+// Contribuição por etapa = R$20 do buy-in + R$10 por rebuy.
+
+export function contribuicaoNaEtapa(r) {
+  return APORTE_FT_BUYIN + (r.rebuys || 0) * APORTE_FT_REBUY
+}
+
+export function regraMesaFinal(etapas, totalEtapasTemporada) {
+  const minEtapas = Math.ceil(totalEtapasTemporada / 2)
+  const mapa = new Map()
+  // etapas em que a soma por jogador não bate com o fundo gravado (ex.: rebuys
+  // por jogador incompletos) — a contribuição de alguém pode estar errada
+  const divergentes = []
+
+  for (const e of etapas) {
+    if (e.num === 'MF') continue
+    let soma = 0
+    for (const r of e.resultados) {
+      const c = contribuicaoNaEtapa(r)
+      soma += c
+      const j = mapa.get(r.name) ?? { name: r.name, etapas: 0, contribuicao: 0 }
+      j.etapas += 1
+      j.contribuicao += c
+      mapa.set(r.name, j)
+    }
+    if (typeof e.fundoFT === 'number' && soma !== e.fundoFT) {
+      divergentes.push({ num: e.num, fundoFT: e.fundoFT, somaJogadores: soma })
+    }
+  }
+
+  const todos = [...mapa.values()]
+  const regulares = todos.filter((j) => j.etapas >= minEtapas)
+  const piso = regulares.length ? Math.min(...regulares.map((j) => j.contribuicao)) : 0
+  const definidoPor = regulares.filter((j) => j.contribuicao === piso).map((j) => j.name)
+
+  const jogadores = todos
+    .map((j) => {
+      const classificado = j.etapas >= minEtapas
+      return {
+        ...j,
+        classificado,
+        complemento: classificado ? 0 : Math.max(0, piso - j.contribuicao),
+      }
+    })
+    .sort((a, b) =>
+      Number(b.classificado) - Number(a.classificado)
+      || b.etapas - a.etapas
+      || b.contribuicao - a.contribuicao
+      || a.name.localeCompare(b.name, 'pt-BR'))
+
+  return { minEtapas, totalEtapas: totalEtapasTemporada, piso, definidoPor, jogadores, divergentes }
+}
+
+// Complemento de um jogador (0 se classificado ou se nunca jogou etapa —
+// nesse caso a contribuição é 0 e o complemento é o piso inteiro).
+export function complementoDe(regra, name) {
+  const j = regra.jogadores.find((x) => x.name === name)
+  if (!j) return regra.piso
+  return j.complemento
 }

@@ -756,3 +756,8 @@ button { font-family: inherit; cursor: pointer; }
   .jogadores { grid-template-columns: 1fr; }
   .brand h1 { font-size: 24px; }
 }
+
+/* Aba Mesa Final */
+.regra-mf { padding-left: 18px; }
+.regra-mf li { margin: 4px 0; }
+.chip-compl { font-size: 11px; opacity: .85; }

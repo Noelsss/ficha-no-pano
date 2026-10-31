@@ -6,6 +6,7 @@ import TabRanking from './components/TabRanking'
 import TabHistorico from './components/TabHistorico'
 import TabCalendario from './components/TabCalendario'
 import TabAcerto from './components/TabAcerto'
+import TabMesaFinal from './components/TabMesaFinal'
 import AdminBar from './components/AdminBar'
 import Login from './components/Login'
 import TabAcessos from './components/TabAcessos'
@@ -43,6 +44,7 @@ export default function App() {
   const tabs = [
     { id: 'ranking', label: 'Ranking' },
     { id: 'calendario', label: 'Calendário' },
+    { id: 'mesafinal', label: 'Mesa Final' },
     ...(isAdmin ? [
       { id: 'etapa', label: 'Nova Etapa' },
       { id: 'acerto', label: 'Acerto' },
@@ -120,6 +122,9 @@ export default function App() {
         )}
         {tab === 'calendario' && (
           <TabCalendario calendario={CALENDARIO} etapas={etapas} />
+        )}
+        {tab === 'mesafinal' && (
+          <TabMesaFinal etapas={etapas} calendario={CALENDARIO} />
         )}
         {tab === 'etapa' && isAdmin && (
           <TabEtapa
